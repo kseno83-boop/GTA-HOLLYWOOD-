@@ -1,15 +1,15 @@
 // Disegno del dehors dell'Hollywood: arredi a terra (sotto le persone), coperture e lucine (sopra), bagliore di notte.
 import { G } from "../core/state";
 import { K } from "../core/util";
-import { F, FACADE_ANGLE, EDGE, U0, U1, LONG, BENCHES, TABLES, PRES, CHAIRS, BARREL, BOARD, ROOFS, POSTS, toWorld, type Table } from "../world/dehors";
+import { F, FACADE_ANGLE, EDGE, U0, U1, LONG, BENCHES, TABLES, PRES, PRES_BENCHES, CHAIRS, BARREL, BOARD, ROOFS, POSTS, toWorld, type Table } from "../world/dehors";
 import { V, PAT } from "./view";
 
 /** Esegue fn nel sistema locale della facciata (x = u, y = n). */
 function local(fn: (ctx: CanvasRenderingContext2D) => void) { const ctx = V.ctx; ctx.save(); ctx.translate(F.ox, F.oy); ctx.rotate(FACADE_ANGLE); fn(ctx); ctx.restore(); }
-function wood(ctx: CanvasRenderingContext2D, t: Table, dark = false) {
+function wood(ctx: CanvasRenderingContext2D, t: Table, dark = false, light = false) {
   const x = t.u - t.w / 2, y = t.n - t.d / 2;
   ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.fillRect(x + .08, y + .1, t.w, t.d);
-  ctx.fillStyle = dark ? "#4a3020" : "#6b4428"; ctx.strokeStyle = K; ctx.lineWidth = .06; ctx.fillRect(x, y, t.w, t.d); ctx.strokeRect(x, y, t.w, t.d);
+  ctx.fillStyle = light ? "#a8875e" : dark ? "#4a3020" : "#6b4428"; ctx.strokeStyle = K; ctx.lineWidth = .06; ctx.fillRect(x, y, t.w, t.d); ctx.strokeRect(x, y, t.w, t.d);
   ctx.strokeStyle = "rgba(0,0,0,.3)"; ctx.lineWidth = .03; ctx.beginPath();
   if (t.w > t.d) for (let k = y + .15; k < y + t.d - .05; k += .15) { ctx.moveTo(x, k); ctx.lineTo(x + t.w, k); }
   else for (let k = x + .15; k < x + t.w - .05; k += .15) { ctx.moveTo(k, y); ctx.lineTo(k, y + t.d); }
@@ -30,13 +30,19 @@ export function drawDehorsGround() {
       ctx.fillRect(-.27, -.22, .08, .44); ctx.strokeRect(-.27, -.22, .08, .44);
       ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.fillRect(-.15, -.15, .3, .06); ctx.restore(); }
     for (const b of BENCHES) wood(ctx, b, true);
-    wood(ctx, LONG); for (const t of TABLES) wood(ctx, t);
+    for (const b of PRES_BENCHES) wood(ctx, b, false, true);
+    wood(ctx, LONG); for (const t of TABLES) wood(ctx, t, false, !!t.pres);
+    // gambe pieghevoli nere del tavolo presidenziale (si vedono ai lati corti)
+    ctx.fillStyle = "#1b1b20"; for (const du of [-PRES.w / 2 - .03, PRES.w / 2 - .03]) ctx.fillRect(PRES.u + du, PRES.n - PRES.d / 2 + .05, .06, PRES.d - .1);
     // bicchieri e posacenere sui tavoli
     ctx.fillStyle = "#e8f4ff"; for (const t of TABLES) { ctx.beginPath(); ctx.arc(t.u + .15, t.n - .1, .06, 0, 7); ctx.fill(); }
     ctx.fillStyle = "#2b2b33"; ctx.beginPath(); ctx.arc(LONG.u - .5, LONG.n, .08, 0, 7); ctx.fill();
-    // tavolo presidenziale: cartellino "riservato"
-    ctx.fillStyle = "#f4efe6"; ctx.strokeStyle = K; ctx.lineWidth = .03; ctx.fillRect(PRES.u - .14, PRES.n - .08, .28, .16); ctx.strokeRect(PRES.u - .14, PRES.n - .08, .28, .16);
-    ctx.fillStyle = "#d3121e"; ctx.fillRect(PRES.u - .1, PRES.n - .02, .2, .04);
+    // tavolo presidenziale: posacenere, birre, telefono e cartellino "riservato"
+    ctx.fillStyle = "#2b2b33"; ctx.beginPath(); ctx.arc(PRES.u - .75, PRES.n, .08, 0, 7); ctx.fill();
+    for (const [du, dn] of [[-.4, .1], [.1, -.12], [.6, .08]]) { ctx.fillStyle = "#f3b33d"; ctx.beginPath(); ctx.arc(PRES.u + du, PRES.n + dn, .07, 0, 7); ctx.fill(); ctx.strokeStyle = "#fff8e0"; ctx.lineWidth = .02; ctx.stroke(); }
+    ctx.fillStyle = "#14201a"; ctx.fillRect(PRES.u - .2, PRES.n + .05, .1, .18);
+    ctx.fillStyle = "#f4efe6"; ctx.strokeStyle = K; ctx.lineWidth = .03; ctx.fillRect(PRES.u + .32, PRES.n - .2, .28, .16); ctx.strokeRect(PRES.u + .32, PRES.n - .2, .28, .16);
+    ctx.fillStyle = "#d3121e"; ctx.fillRect(PRES.u + .36, PRES.n - .14, .2, .04);
     // botte
     ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.arc(BARREL.u + .08, BARREL.n + .1, BARREL.r, 0, 7); ctx.fill();
     ctx.fillStyle = "#6e4426"; ctx.strokeStyle = K; ctx.lineWidth = .06; ctx.beginPath(); ctx.arc(BARREL.u, BARREL.n, BARREL.r, 0, 7); ctx.fill(); ctx.stroke();

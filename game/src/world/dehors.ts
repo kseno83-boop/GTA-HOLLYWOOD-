@@ -40,8 +40,10 @@ export interface Chair { u: number; n: number; fu: number; fn: number; col: stri
 /** Tavolo lungo da birreria con due panche, prima fila a sud della porta. */
 export const LONG = { u: -5.2, n: 1.0, w: 2.4, d: .75 };
 export const BENCHES = [{ u: -5.2, n: .42, w: 2.4, d: .3 }, { u: -5.2, n: 1.58, w: 2.4, d: .3 }];
-/** Tavolo presidenziale: subito a sinistra dell'entrata guardando la porta dalla strada (lato sud). */
-export const PRES: Table = { u: -2.05, n: 1.15, w: .9, d: .9, pres: true };
+/** Tavolo presidenziale (dalla foto dell'utente): tavolo da birreria in legno chiaro con gambe pieghevoli e due panche,
+ *  parallelo alla facciata, subito a sinistra dell'entrata guardando la porta dalla strada (lato sud). */
+export const PRES: Table = { u: -2.35, n: 1.1, w: 2.0, d: .62, pres: true };
+export const PRES_BENCHES = [{ u: PRES.u, n: .52, w: 2.0, d: .28 }, { u: PRES.u, n: 1.68, w: 2.0, d: .28 }];
 export const TABLES: Table[] = [PRES,
   // prima fila (contro il muro)
   { u: 1.9, n: 1.0, w: .7, d: .7 }, { u: 3.7, n: 1.0, w: .7, d: .7 }, { u: 6.9, n: 1.0, w: .7, d: .7 }, { u: 8.7, n: .9, w: .7, d: .7 },
@@ -49,9 +51,8 @@ export const TABLES: Table[] = [PRES,
   { u: -6.6, n: 3.2, w: .7, d: .7 }, { u: -4.2, n: 3.2, w: .7, d: .7 }, { u: -2.0, n: 3.25, w: .7, d: .7 },
   { u: 2.3, n: 3.2, w: .7, d: .7 }, { u: 4.6, n: 3.25, w: .7, d: .7 }, { u: 7.8, n: 3.2, w: .7, d: .7 }];
 const chair = (t: Table, du: number, dn: number, col: string): Chair => ({ u: t.u + du, n: t.n + dn, fu: -du, fn: -dn, col, pres: t.pres });
-const [P0, A1, A2, A3, A4, B1, B2, B3, B4, B5, B6] = TABLES;
+const [, A1, A2, A3, A4, B1, B2, B3, B4, B5, B6] = TABLES;
 export const CHAIRS: Chair[] = [
-  chair(P0, 0, .72, CHAIR.white), chair(P0, -.72, 0, CHAIR.black), chair(P0, .72, 0, CHAIR.white), chair(P0, 0, -.72, CHAIR.black),
   chair(A1, 0, .62, CHAIR.white), chair(A1, .62, 0, CHAIR.black), chair(A2, 0, .62, CHAIR.green), chair(A2, .62, 0, CHAIR.red),
   chair(A3, 0, .62, CHAIR.black), chair(A3, .62, 0, CHAIR.black), chair(A4, 0, .62, CHAIR.white),
   chair(B1, 0, .62, CHAIR.black), chair(B1, -.62, 0, CHAIR.white), chair(B2, 0, .62, CHAIR.green), chair(B2, 0, -.62, CHAIR.red),
@@ -69,6 +70,7 @@ export interface Seat { x: number; y: number; a: number; pres?: boolean }
 /** Posti a sedere: sedie + panche del tavolo lungo. a = angolo nel mondo verso il tavolo. */
 export const SEATS: Seat[] = [
   ...CHAIRS.map(c => ({ ...toWorld(c.u, c.n), a: dirWorld(c.fu, c.fn), pres: c.pres })),
+  ...[-1.75, -2.35, -2.95].flatMap(u => [{ ...toWorld(u, PRES_BENCHES[0].n), a: dirWorld(0, 1), pres: true }, { ...toWorld(u, PRES_BENCHES[1].n), a: dirWorld(0, -1), pres: true }]),
   ...[-6, -5.2, -4.4].flatMap(u => [{ ...toWorld(u, BENCHES[0].n), a: dirWorld(0, 1) }, { ...toWorld(u, BENCHES[1].n), a: dirWorld(0, -1) }]),
 ];
 /** Punto da cui escono e rientrano i clienti del dehors (soglia della porta). */
@@ -80,6 +82,7 @@ Object.assign(DOOR, toWorld(0, .9));
 // tavoli, panche e botte sono solidi (giocatore, auto, passanti)
 const box = (u: number, n: number, w: number, d: number) => solids.push({ ...toWorld(u, n), ux: F.ux, uy: F.uy, nx: F.nx, ny: F.ny, hu: w / 2, hn: d / 2 });
 box(LONG.u, (BENCHES[0].n + BENCHES[1].n) / 2, LONG.w, BENCHES[1].n - BENCHES[0].n + BENCHES[0].d);
+box(PRES.u, (PRES_BENCHES[0].n + PRES_BENCHES[1].n) / 2, PRES.w, PRES_BENCHES[1].n - PRES_BENCHES[0].n + PRES_BENCHES[0].d);
 for (const t of TABLES) box(t.u, t.n, t.w, t.d);
 box(BARREL.u, BARREL.n, BARREL.r * 2, BARREL.r * 2);
 
