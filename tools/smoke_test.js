@@ -12,7 +12,7 @@ const out = process.argv[2] || ".";
   const errs = []; p.on("pageerror", e => errs.push(e.message)); p.on("console", m => { if (m.type() === "error") errs.push(m.text()); });
   const until = (fn, arg, timeout = 30000) => p.waitForFunction(fn, arg, { timeout, polling: 100 });
   /** aspetta che passino m minuti di gioco */
-  const minutes = async m => { const h0 = await p.evaluate(() => window.__gta.G.hour); await until(([h0, m]) => (window.__gta.G.hour - h0 + 24) % 24 >= m / 60, [h0, m]); };
+  const minutes = async m => { const h0 = await p.evaluate(() => window.__gta.G.hour); await until(([h0, m]) => (window.__gta.G.hour - h0 + 24) % 24 >= m / 60, [h0, m], 15000 + m * 5000); };
   const key = async k => { await p.keyboard.press(k); await p.waitForTimeout(250); };
   await p.goto("file://" + path.resolve(__dirname, "../game/dist/index.html"));
   await until(() => window.__gta && window.__gta.game.isBooted, null, 15000);
@@ -24,7 +24,17 @@ const out = process.argv[2] || ".";
   // dehors dell'Hollywood: clienti seduti e tavoli solidi
   const dehors = await p.evaluate(() => { const { peds, P, dehors } = window.__gta, t = dehors.TABLES[1], c = dehors.toWorld(t.u, t.n);
     P.x = c.x; P.y = c.y; return { seated: peds.filter(p => p.seat !== undefined).length }; });
-  await minutes(1);
+  // per 20 minuti di gioco: nessun mezzo deve passare in mezzo ai tavoli (la strada è deviata nella corsia libera)
+  await p.evaluate(() => { const { cars, VT, dehors: d } = window.__gta; window.__intr = { cars: 0, samples: 0, passed: 0 };
+    window.__iv = setInterval(() => { window.__intr.samples++; for (const c of cars) { if (!c.ai || VT[c.type].bike) continue; const l = d.toLocal(c.x, c.y);
+      if (l.u > d.U0 && l.u < d.U1 && l.n > -1 && l.n < 9) { window.__intr.passed++; if (l.n < d.EDGE + .5) window.__intr.cars++; } } }, 100); });
+  // un'auto col permesso ZTL imbocca Corso Magenta poco prima del dehors
+  dehors.testCar = await p.evaluate(() => { const { cars, map, dehors: d } = window.__gta, r = map.roads.find(r => r.name === "Corso Magenta" && r.ids.some(i => { const l = d.toLocal(map.NX[i], map.NY[i]); return Math.abs(l.u) < 20 && l.n > d.EDGE; }));
+    const k = r.ids.findIndex(i => { const l = d.toLocal(map.NX[i], map.NY[i]); return Math.abs(l.u) < 20 && l.n > d.EDGE; }), a = r.ids[k - 2], b = r.ids[k - 1];
+    cars.push({ type: "ztl", ai: true, tmp: false, x: map.NX[a], y: map.NY[a], a: Math.atan2(map.NY[b] - map.NY[a], map.NX[b] - map.NX[a]), v: 4, prev: a, next: b, road: r, permit: true, lane: 1, col: "#c9ccd6", honkT: 0, insT: 0, bub: "", bubT: 0, wheelie: 0, kind: "test" });
+    return { from: d.toLocal(map.NX[a], map.NY[a]) }; });
+  await minutes(20);
+  dehors.traffic = await p.evaluate(() => { clearInterval(window.__iv); return window.__intr; });
   dehors.pushedOffTable = await p.evaluate(() => { const { P, dehors } = window.__gta, t = dehors.TABLES[1], c = dehors.toWorld(t.u, t.n); return Math.hypot(P.x - c.x, P.y - c.y) > .5; });
   // personaggi di prova: uno al bancone, uno davanti al Maramao
   await p.evaluate(() => window.__gta.PERSONAGGI.push(
@@ -51,7 +61,7 @@ const out = process.argv[2] || ".";
   await p.evaluate(() => { const { P } = window.__gta; P.y = 11; }); await minutes(1);
   const npcOut = await p.evaluate(() => { const { peds, G } = window.__gta, n = peds.find(p => p.npc === "fuori"); return { scene: G.scene, spawned: !!n }; });
   console.log(JSON.stringify({ street, dehors, bar, dialog, npcOut, errs }, null, 1));
-  const ok = !errs.length && street.wrongWay === 0 && dehors.seated > 0 && dehors.pushedOffTable && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned;
+  const ok = !errs.length && street.wrongWay === 0 && dehors.seated > 0 && dehors.pushedOffTable && dehors.traffic.cars === 0 && dehors.traffic.passed > 0 && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned;
   console.log(ok ? "OK" : "FALLITO");
   await b.close(); process.exit(ok ? 0 : 1);
 })();

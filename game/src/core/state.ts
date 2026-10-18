@@ -20,6 +20,8 @@ export interface Ped extends Body {
   npc?: string;
   /** Cliente seduto nel dehors: angolo verso il tavolo e indice del posto. */
   seat?: number; seatIdx?: number;
+  /** Si sta scansando per far passare un mezzo: tempo rimasto e punto dove si sposta. */
+  dodgeT?: number; gx?: number; gy?: number;
 }
 export type VehType = "car" | "ztl" | "police" | "ambulance" | "fire" | "truck" | "rider" | "maranza" | "scooter";
 export interface Vehicle {
@@ -35,6 +37,8 @@ export type Scene = "out" | "bar";
 export const P = {
   x: 0, y: 0, a: Math.PI / 2, car: null as Vehicle | null, anim: 0, cool: 0, flash: 0, hp: 100, hurtT: 0,
   moving: false, bust: 0,
+  /** Seduto al tavolo presidenziale: indice del posto (-1 = in piedi). */
+  seat: -1,
 };
 
 /** Variabili globali di partita (orario, ricercato, camera, messaggi). */

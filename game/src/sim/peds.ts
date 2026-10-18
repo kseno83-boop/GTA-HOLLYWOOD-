@@ -1,9 +1,10 @@
 // ---------- Passanti, bande e sbirri ----------
-import { G, P, peds, blood, look, activity, say, viewHalf, type Ped, type Look } from "../core/state";
+import { G, P, peds, cars, blood, look, activity, say, viewHalf, type Ped, type Look } from "../core/state";
 import { R, clamp, pick, hyp, angDiff } from "../core/util";
 import { NX, NY, adj, pushOut, nearestNode, DOOR, PLACES } from "../world/map";
 import { sfx } from "../audio/sfx";
 import { LINES } from "./bar";
+import { VT } from "./traffic";
 
 /** Livelli di ricercato: Polizia Locale → Polizia di Stato → Carabinieri → Carabinieri+Polizia → reparti speciali. */
 export const LEVELS = ["", "POLIZIA LOCALE", "POLIZIA DI STATO", "CARABINIERI", "CARABINIERI + POLIZIA", "REPARTI SPECIALI"];
@@ -48,6 +49,16 @@ export { INSULTS };
 export function insultNear(x: number, y: number, lines = INSULTS) { let best = 11, who: Ped | null = null; for (const p of peds) { if (p.st === "dead" || p.cop || p.bubT > 0) continue; const d = hyp(p.x - x, p.y - y); if (d < best) { best = d; who = p; } }
   if (who) { who.bub = pick(lines); who.bubT = 2.4; if (who.st === "walk" || who.st === "idle") who.a = Math.atan2(y - who.y, x - who.x); } }
 
+/** I pedoni si fanno da parte quando un mezzo in movimento sta per arrivargli addosso (in centro le strade sono strette). */
+function dodge(p: Ped) {
+  for (const v of cars) { const sp = Math.abs(v.v); if (sp < 1.5 || (!v.ai && v !== P.car) || Math.abs(v.x - p.x) > 14 || Math.abs(v.y - p.y) > 14) continue;
+    const ca = Math.cos(v.a), sa = Math.sin(v.a), rx = p.x - v.x, ry = p.y - v.y, f = (rx * ca + ry * sa) * Math.sign(v.v), l = -rx * sa + ry * ca, W = VT[v.type].W / 2 + .6;
+    if (f < VT[v.type].L / 2 - .5 || f > 4 + sp * .9 || Math.abs(l) > W) continue;
+    const side = l === 0 ? (Math.random() < .5 ? -1 : 1) : Math.sign(l), k = side * (W + .35) - l;
+    p.gx = p.x - sa * k; p.gy = p.y + ca * k; p.dodgeT = 1.6; if (p.st === "idle") p.st = "walk";
+    if (!(p.bubT > 0) && Math.random() < .15) { p.bub = pick(["Oh, piano!", "Permesso...", "Ecco, passa"]); p.bubT = 1.6; }
+    p.a = Math.atan2(p.gy - p.y, p.gx - p.x); return; }
+}
 export function updPeds(dt: number) {
   const [hw, hh] = viewHalf(), want = Math.round((22 + 40 * activity(G.hour)) * Math.min(1.4, (hw * hh) / 4000 + .5)), cops = Math.min(10, Math.ceil(G.heat) * 2);
   let nc = 0, np = 0; for (const p of peds) if (p.st !== "dead" && !p.keep) p.cop ? nc++ : np++;
@@ -55,8 +66,10 @@ export function updPeds(dt: number) {
   for (let i = peds.length - 1; i >= 0; i--) { const p = peds[i]; if (!p) continue;
     if (!p.keep && (Math.abs(p.x - P.x) > hw + 75 || Math.abs(p.y - P.y) > hh + 75 || (p.cop && G.heat === 0 && Math.abs(p.x - P.x) > hw))) { peds.splice(i, 1); continue; }
     if (p.bubT > 0) p.bubT -= dt; if (p.st === "dead") continue;
-    let tx: number, ty: number; const sp = p.spd;
-    if (p.st === "chase") { if (G.heat === 0) { p.st = "walk"; p.spd = 1.4; continue; } tx = P.x; ty = P.y;
+    let tx: number, ty: number, sp = p.spd;
+    if ((p.st === "walk" || p.st === "idle") && !(p.dodgeT! > 0)) dodge(p);
+    if (p.dodgeT! > 0) { p.dodgeT! -= dt; tx = p.gx!; ty = p.gy!; sp = 2.8; if (hyp(tx - p.x, ty - p.y) < .15) continue; }
+    else if (p.st === "chase") { if (G.heat === 0) { p.st = "walk"; p.spd = 1.4; continue; } tx = P.x; ty = P.y;
       const d = hyp(P.x - p.x, P.y - p.y), car = P.car;
       if (d < (car ? 2.6 : 1.3) && (!car || Math.abs(car.v) < 1.2)) { P.bust += dt; if (!car) hurt(dt * (5 + G.heat * 3)); if (P.bust > 1.5) busted(); }
       if (Math.random() < dt * .15) { p.bub = pick(["Fermo! Polizia!", "Alt!", "Mani in alto!"]); p.bubT = 1.6; } }

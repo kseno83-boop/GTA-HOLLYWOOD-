@@ -87,3 +87,18 @@ const PCOL: Record<string, string> = { "BAR MARAMAO": "#ff9f1c", "BAR MORELLO": 
 export const PLACES: Place[] = (MAP.places as [string, string, number, number, number, number][]).map(([name, kind, x, y, dx, dy]) =>
   ({ name, kind: kind as Place["kind"], x: x / 10, y: y / 10, dx: dx / 10, dy: dy / 10, col: PCOL[name] || "#fff" }));
 export const placeNear = () => PLACES.find(q => hyp(P.x - q.dx, P.y - q.dy) < 3.5);
+
+/** Inserisce nuovi nodi tra due nodi consecutivi di una strada (pts nell'ordine da a verso b). Serve a deviare una strada
+ *  attorno a un ostacolo che OSM non conosce (es. il dehors dell'Hollywood). Ritorna false se a e b non sono consecutivi. */
+export function insertNodes(a: number, b: number, pts: { x: number; y: number }[]) {
+  for (const r of roads) for (let i = 0; i < r.ids.length - 1; i++) {
+    const fwd = r.ids[i] === a && r.ids[i + 1] === b, rev = r.ids[i] === b && r.ids[i + 1] === a; if (!fwd && !rev) continue;
+    const ids = pts.map(p => { NX.push(p.x); NY.push(p.y); adj.push([]); return NX.length - 1; }), seq = fwd ? ids : ids.reverse();
+    r.ids.splice(i + 1, 0, ...seq);
+    const p = r.ids[i], q = r.ids[i + seq.length + 1];
+    adj[p] = adj[p].filter(e => !(e.n === q && e.r === r)); adj[q] = adj[q].filter(e => !(e.n === p && e.r === r));
+    for (let k = i; k <= i + seq.length; k++) { const m = r.ids[k], n = r.ids[k + 1]; adj[m].push({ n, r, fwd: true }); adj[n].push({ n: m, r, fwd: false }); }
+    for (const id of ids) { r.x0 = Math.min(r.x0, NX[id]); r.x1 = Math.max(r.x1, NX[id]); r.y0 = Math.min(r.y0, NY[id]); r.y1 = Math.max(r.y1, NY[id]); }
+    return true; }
+  return false;
+}

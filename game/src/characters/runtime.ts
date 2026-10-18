@@ -5,6 +5,7 @@ import { DOOR, PLACES } from "../world/map";
 import { makePed } from "../sim/peds";
 import { barHooks, barista, guests, freeSlots, leaveBar, newGuest } from "../sim/bar";
 import { PERSONAGGI } from "./index";
+import { SEATS } from "../world/dehors";
 import type { Personaggio } from "./types";
 
 /** In ore di gioco; una fascia come [22, 2] passa la mezzanotte. */
@@ -45,11 +46,14 @@ export function initCharacters() {
 function doorOf(l: string) { if (l === "HOLLYWOOD") return DOOR; const q = PLACES.find(q => q.name === l); return q ? { x: q.dx, y: q.dy } : null; }
 export function updStreetNpcs(dt: number) {
   const [hw, hh] = viewHalf();
-  PERSONAGGI.forEach((c, i) => { if (typeof c.posto !== "object") return;
+  PERSONAGGI.forEach((c, i) => { if (typeof c.posto !== "object" && c.posto !== "presidenziale") return;
     const p = peds.find(p => p.npc === c.id);
     if (p && p.st === "dead") { dead.add(c.id); return; }
     const here = present(c) && !dead.has(c.id);
-    if (here && !p) { const d = doorOf(c.posto.fuori); if (!d) return; const a = 1.45 + i * 2.4, hx = d.x + Math.cos(a) * 2.6, hy = d.y + Math.sin(a) * 2.6;
+    if (here && !p && c.posto === "presidenziale") { // seduto a un posto libero del tavolo presidenziale (non quello del giocatore)
+      const k = SEATS.findIndex((s, j) => s.pres && j !== P.seat && !peds.some(q => q.seatIdx === j && q.st !== "dead")); if (k < 0) return; const s = SEATS[k];
+      makePed(s.x, s.y, { hx: s.x, hy: s.y, a: s.a, seat: s.a, seatIdx: k, st: "loiter", keep: true, npc: c.id, spd: 1.3, stripes: null, ...c.aspetto }); }
+    else if (here && !p && typeof c.posto === "object") { const d = doorOf(c.posto.fuori); if (!d) return; const a = 1.45 + i * 2.4, hx = d.x + Math.cos(a) * 2.6, hy = d.y + Math.sin(a) * 2.6;
       makePed(hx, hy, { hx, hy, a: a + Math.PI, st: "loiter", keep: true, npc: c.id, spd: 1.4, stripes: null, ...c.aspetto }); }
     else if (!here && p && (Math.abs(p.x - P.x) > hw + 4 || Math.abs(p.y - P.y) > hh + 4)) peds.splice(peds.indexOf(p), 1); });
   ambient(dt);

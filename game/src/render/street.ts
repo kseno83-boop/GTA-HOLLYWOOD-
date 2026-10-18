@@ -40,7 +40,7 @@ export function drawOut() {
   LIGHTS.length = 0; for (const c of cars) if (c.x > vx0 && c.x < vx1 && c.y > vy0 && c.y < vy1) vehicle(c, nt > .3);
   for (const p of peds) if (p.st === "dead") person(p, "dead");
   for (const p of peds) if (p.st !== "dead") person(p, pedPose(p));
-  if (!P.car) person(Object.assign(PLOOK, { x: P.x, y: P.y, a: P.a, anim: P.anim, flash: P.flash }), "gun");
+  if (!P.car) person(Object.assign(PLOOK, { x: P.x, y: P.y, a: P.a, anim: P.anim, flash: P.flash }), P.seat >= 0 && !(P.flash > 0) ? "sit" : "gun");
   drawBullets();
   drawDehorsTop(nt);
   // edifici in pseudo-3D: tetti proiettati verso la camera come in GTA2

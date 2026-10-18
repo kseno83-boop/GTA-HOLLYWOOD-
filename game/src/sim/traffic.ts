@@ -5,6 +5,7 @@ import { G, P, cars, peds, look, activity, viewHalf, CARCOL, type Ped, type Vehi
 import { R, clamp, pick, hyp, angDiff, rnd } from "../core/util";
 import { NX, NY, adj, roads, pushOut, solidAt, type Edge, type Road } from "../world/map";
 import { sfx } from "../audio/sfx";
+import { inDehorsZone } from "../world/dehors";
 import { makePed, snap, crime, hurt, insultNear, copLook, INSULTS } from "./peds";
 
 export interface VehSpec { L: number; W: number; cruise: number; max: number; acc: number; bike?: boolean }
@@ -46,7 +47,7 @@ function spawnVeh(type: VehType, o: Partial<Vehicle> = {}, anywhere = false) {
       col: pick(CARCOL), honkT: 0, insT: 0, bub: "", bubT: 0, wheelie: 0 }, o) as Vehicle;
     if (T.bike) { if (type === "rider") v.box = pick(["#2ec4b6", "#ff6b35", "#ffd23f"]); v.rider = look(type === "rider" ? { cap: "#202020", shirt: v.box } : { shirt: "#1b1b1b", stripes: "#e8e8e8", cap: "#111" }); }
     cars.push(v); return v; } }
-function laneOff(v: Vehicle) { const r = v.road; if (VT[v.type].bike) return (r.w / 2 - .7) * v.lane; if (!r.car) return 0; if (r.oneway) return v.kind === "wrong" ? r.w / 5 : 0; return (r.w > 7.5 ? r.w / 4 : r.w / 5) * v.lane; }
+function laneOff(v: Vehicle) { const r = v.road; if (VT[v.type].bike) return (inDehorsZone(v.x, v.y) ? .7 : r.w / 2 - .7) * v.lane; if (!r.car) return 0; if (r.oneway) return v.kind === "wrong" ? r.w / 5 : 0; return (r.w > 7.5 ? r.w / 4 : r.w / 5) * v.lane; }
 /** Volante all'inseguimento: punta il giocatore, se è a piedi e vicino si ferma e fa scendere due agenti. */
 function chase(v: Vehicle, dt: number) { const T = VT[v.type], d = hyp(P.x - v.x, P.y - v.y);
   if (!P.car && d < 9) { v.v = Math.max(0, v.v - 25 * dt); if (v.v < .5 && !v.deployed) { v.deployed = true; v.mode = null; v.ai = false; v.inLane = true; v.lights = true; v.siren = false;
@@ -90,7 +91,7 @@ export function updVeh(dt: number) {
     const check = (e: { x: number; y: number }, w: number) => { const rx = e.x - v.x, ry = e.y - v.y, f = rx * ca + ry * sa, l = -rx * sa + ry * ca; if (f > T.L / 2 - .3 && f < ahead && Math.abs(l) < T.W / 2 + w) block = e; };
     if (v.ghost && v.ghost > 0) v.ghost -= dt; else {
       if (!P.car && G.scene === "out") check(P, .5);
-      for (const p of peds) if (p.st !== "dead" && Math.abs(p.x - v.x) < ahead + 2 && Math.abs(p.y - v.y) < ahead + 2) check(p, .4);
+      { const pw = inDehorsZone(v.x, v.y) ? .15 : .4; for (const p of peds) if (p.st !== "dead" && Math.abs(p.x - v.x) < ahead + 2 && Math.abs(p.y - v.y) < ahead + 2) check(p, pw); }
       for (const o of cars) if (o !== v && (o.ai || o === P.car || o.inLane) && Math.abs(o.x - v.x) < ahead + 8 && Math.abs(o.y - v.y) < ahead + 8) check(o, VT[o.type].W / 2); }
     if (block) { want = 0; v.blockT = (v.blockT || 0) + dt;
       if (v.blockT > 1.2 && v.honkT <= 0 && !T.bike) { v.honkT = R(2.5, 4.5); if (hyp(v.x - P.x, v.y - P.y) < 40) sfx.horn(); v.bub = pick(DRIVER[v.type] || DRIVER.car); v.bubT = 2; }

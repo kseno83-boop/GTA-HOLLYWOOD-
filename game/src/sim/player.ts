@@ -8,6 +8,7 @@ import { VT, boxDist, boxPush, nearVeh, crashBike } from "./traffic";
 import { makePed, panic, crime, hurt, kill, INSULTS } from "./peds";
 import { enterBar } from "./bar";
 import { talkTarget, talk } from "../characters/runtime";
+import { presSeatNear, sitPlayer, standPlayer } from "./dehors";
 
 export function inputVec(): [number, number] { if (joy.on) return [joy.dx, joy.dy];
   const x = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0), y = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0);
@@ -24,6 +25,8 @@ export function shoot() { if (P.cool > 0) return; if (G.scene === "bar") { say("
 export function action() {
   const npc = talkTarget(); if (npc) { talk(npc); return; }
   if (G.scene === "bar") return;
+  if (P.seat >= 0) { standPlayer(); return; }
+  const seat = presSeatNear(); if (seat >= 0) { sitPlayer(seat); say("TAVOLO PRESIDENZIALE", 2); return; }
   if (P.car) { const c = P.car; if (Math.abs(c.v) > 3) return; c.v = 0; P.car = null; sfx.carDoor(); const ew = VT[c.type].W / 2 + .8; P.x = c.x - Math.sin(c.a) * ew; P.y = c.y + Math.cos(c.a) * ew; pushOut(P, .35); return; }
   if (hyp(P.x - DOOR.x, P.y - DOOR.y) < 3.5) { enterBar(); return; }
   const q = placeNear(); if (q) { if (q.kind === "food") { if (P.hp < 100) { P.hp = 100; sfx.eat(); say(`${q.name} · SALUTE PIENA`); } else say("Non hai fame adesso.");
@@ -49,6 +52,8 @@ export function updPlayer(dt: number) {
     if (hitV) { if (sp0 > 7) { G.shake = .3; sfx.crash(); if (VT[hitV.type].bike && hitV.rider) crashBike(hitV); else if (hitV.ai) { hitV.v = 0; hitV.bub = pick(["Ma sei scemo?!", "La mia macchina!!", "Chiamo i vigili!"]); hitV.bubT = 2.5; crime(.3); } } c.v *= sp0 > 7 ? -.3 : .85; }
     for (const p of peds) if (p.st !== "dead" && sp0 > 4 && boxDist(p, c) < .25) { if (T.bike) { if (p.st !== "flee") { p.st = "flee"; p.t = 4; p.spd = 5; p.bub = pick(INSULTS); p.bubT = 2; } } else kill(p, Math.cos(c.a), Math.sin(c.a)); }
     P.x = c.x; P.y = c.y; P.a = c.a; return; }
+  // seduto al tavolo presidenziale: ci si alza muovendosi (o con E)
+  if (P.seat >= 0) { if (!ix && !iy) { P.moving = false; if (mouse.down || touchFire.held) { if (!TOUCH) { const [wx, wy] = screenToWorld(mouse.x, mouse.y); P.a = Math.atan2(wy - P.y, wx - P.x); } shoot(); } return; } standPlayer(); }
   const run = keys.ShiftLeft || keys.ShiftRight || (joy.on && hyp(ix, iy) > .92), sp = run ? 9 : 5.6;
   P.x += ix * sp * dt; P.y += iy * sp * dt; P.moving = !!(ix || iy); if (P.moving) { P.anim += sp * dt * 4.5; if (TOUCH) P.a += angDiff(P.a, Math.atan2(iy, ix)) * Math.min(1, dt * 12); }
   if (!TOUCH) { const [wx, wy] = screenToWorld(mouse.x, mouse.y); P.a = Math.atan2(wy - P.y, wx - P.x); }

@@ -13,6 +13,7 @@ import { skipHour } from "../sim/clock";
 import { track, nextTrack } from "../audio/music";
 import { sfx } from "../audio/sfx";
 import { D, talkTarget } from "../characters/runtime";
+import { presSeatNear } from "../sim/dehors";
 import { renderPitch } from "../render/pitch";
 import { buildMini, MINI_K } from "../ui/minimap";
 import { mkText, setT, HmText, DISPLAY } from "../ui/text";
@@ -120,6 +121,8 @@ export class HudScene extends Phaser.Scene {
     if (D.id) hint = `${E} · ${D.shown < D.text.length ? "salta" : "avanti"}`;
     else if (tt) hint = `${E} · parla con ${tt.c.nome}`;
     else if (G.scene === "bar") hint = "Esci dalla porta in basso per tornare in Corso Magenta";
+    else if (P.seat >= 0) hint = `${E} · alzati`;
+    else if (presSeatNear() >= 0) hint = `${E} · siediti al tavolo presidenziale`;
     else if (P.car) hint = Math.abs(P.car.v) > 3 ? "" : `${E} · scendi dall'auto`;
     else if (hyp(P.x - DOOR.x, P.y - DOOR.y) < 3.5) hint = `${E} · entra all'Hollywood`;
     else { const q = placeNear(); if (q) hint = `${E} · ${q.kind === "food" ? "mangia da " + q.name : q.name + " (rivali)"}`;

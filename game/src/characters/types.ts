@@ -15,9 +15,10 @@ export interface Personaggio {
    * Dove sta:
    * - "barista": prende il posto del barista dietro il bancone dell'Hollywood;
    * - "bancone" / "tavolo": avventore fisso dell'Hollywood (in piedi al bancone o al tavolone);
+   * - "presidenziale": seduto fuori al tavolo presidenziale del dehors (riservato agli abituali e al protagonista);
    * - { fuori: luogo }: in strada, davanti alla porta di quel locale.
    */
-  posto: "barista" | "bancone" | "tavolo" | { fuori: Luogo };
+  posto: "barista" | "bancone" | "tavolo" | "presidenziale" | { fuori: Luogo };
   /** Fasce orarie di presenza in ore di gioco, es. [[18, 24], [0, 1.5]]. Se manca: sempre (negli orari di apertura). */
   orari?: [number, number][];
   /** Aspetto: colori CSS. cap = cappellino, stripes = righe sulla maglia, apron = grembiule. */

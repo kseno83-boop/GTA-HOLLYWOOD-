@@ -1,8 +1,8 @@
 // Disegno del dehors dell'Hollywood: arredi a terra (sotto le persone), coperture e lucine (sopra), bagliore di notte.
 import { G } from "../core/state";
 import { K } from "../core/util";
-import { F, FACADE_ANGLE, EDGE, LONG, BENCHES, TABLES, CHAIRS, BARREL, BOARD, ROOFS, POSTS, toWorld, type Table } from "../world/dehors";
-import { V } from "./view";
+import { F, FACADE_ANGLE, EDGE, U0, U1, LONG, BENCHES, TABLES, PRES, CHAIRS, BARREL, BOARD, ROOFS, POSTS, toWorld, type Table } from "../world/dehors";
+import { V, PAT } from "./view";
 
 /** Esegue fn nel sistema locale della facciata (x = u, y = n). */
 function local(fn: (ctx: CanvasRenderingContext2D) => void) { const ctx = V.ctx; ctx.save(); ctx.translate(F.ox, F.oy); ctx.rotate(FACADE_ANGLE); fn(ctx); ctx.restore(); }
@@ -17,6 +17,11 @@ function wood(ctx: CanvasRenderingContext2D, t: Table, dark = false) {
 }
 /** Arredi a terra: si disegnano prima delle persone, così chi è seduto sta sopra la sedia. */
 export function drawDehorsGround() {
+  // porfido sotto il dehors e lungo la facciata (la strada OSM qui è deviata verso il centro); in coordinate del mondo
+  // perché la trama combaci con quella della strada
+  const ctx0 = V.ctx; ctx0.fillStyle = PAT.porf; ctx0.beginPath();
+  for (const [u, n] of [[U0 - 9.5, 0], [U1 + 9.5, 0], [U1 + 9.5, EDGE + .4], [U0 - 9.5, EDGE + .4]]) { const p = toWorld(u, n); ctx0.lineTo(p.x, p.y); }
+  ctx0.fill();
   local(ctx => {
     // sedie in metallo (stile Tolix): seduta quadrata e schienale dalla parte opposta al tavolo
     for (const c of CHAIRS) { ctx.save(); ctx.translate(c.u, c.n); ctx.rotate(Math.atan2(c.fn, c.fu));
@@ -29,6 +34,9 @@ export function drawDehorsGround() {
     // bicchieri e posacenere sui tavoli
     ctx.fillStyle = "#e8f4ff"; for (const t of TABLES) { ctx.beginPath(); ctx.arc(t.u + .15, t.n - .1, .06, 0, 7); ctx.fill(); }
     ctx.fillStyle = "#2b2b33"; ctx.beginPath(); ctx.arc(LONG.u - .5, LONG.n, .08, 0, 7); ctx.fill();
+    // tavolo presidenziale: cartellino "riservato"
+    ctx.fillStyle = "#f4efe6"; ctx.strokeStyle = K; ctx.lineWidth = .03; ctx.fillRect(PRES.u - .14, PRES.n - .08, .28, .16); ctx.strokeRect(PRES.u - .14, PRES.n - .08, .28, .16);
+    ctx.fillStyle = "#d3121e"; ctx.fillRect(PRES.u - .1, PRES.n - .02, .2, .04);
     // botte
     ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.arc(BARREL.u + .08, BARREL.n + .1, BARREL.r, 0, 7); ctx.fill();
     ctx.fillStyle = "#6e4426"; ctx.strokeStyle = K; ctx.lineWidth = .06; ctx.beginPath(); ctx.arc(BARREL.u, BARREL.n, BARREL.r, 0, 7); ctx.fill(); ctx.stroke();

@@ -9,6 +9,7 @@ Per ora l'elenco è vuoto: i personaggi li definisce l'autore del gioco.
 - **Posto**:
   - `"barista"`: prende il posto del barista dietro il bancone dell'Hollywood;
   - `"bancone"` o `"tavolo"`: avventore fisso dell'Hollywood. Entra dalla porta, resta finché è nel suo orario, poi esce;
+  - `"presidenziale"`: seduto fuori, al tavolo presidenziale del dehors (subito a sinistra dell'entrata guardando la porta dalla strada; riservato agli abituali e al protagonista);
   - `{ fuori: "BAR MARAMAO" }` (oppure `"HOLLYWOOD"`, `"BAR MORELLO"`, `"STUZZI SUSHI"`, `"GRAN PRIX"`): sta in strada davanti a quel locale.
 - **Dialogo**: avvicinati e premi **E** (sul telefono **AZIONE**). Il personaggio dice una battuta di `dialogo` per pressione, con il nome al neon e il testo che appare lettera per lettera. Dopo l'ultima battuta il dialogo si chiude, e la volta dopo ricomincia dall'inizio. Il dialogo si chiude anche se ti allontani.
 - **Frasi spontanee**: ogni tanto dice una delle `frasi` in una nuvoletta.
@@ -24,7 +25,7 @@ I valori qui sotto sono segnaposto, da sostituire con quelli veri:
   id: "nome-senza-spazi",
   nome: "Nome mostrato",
   ruolo: "chi è (solo promemoria)",
-  posto: "bancone",                 // "barista" | "bancone" | "tavolo" | { fuori: "BAR MARAMAO" }
+  posto: "bancone",                 // "barista" | "bancone" | "tavolo" | "presidenziale" | { fuori: "BAR MARAMAO" }
   orari: [[18, 24], [0, 1.5]],      // facoltativo
   aspetto: { shirt: "#d3121e", stripes: "#111", hair: "#2b1d14", cap: "#111" }, // facoltativo
   squadra: "MILAN",                 // facoltativo
