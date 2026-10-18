@@ -16,6 +16,10 @@ ROAD_TYPES = ["primary", "secondary", "tertiary", "unclassified", "residential",
               "service", "pedestrian", "footway", "cycleway", "steps", "path"]
 GREEN = {"park", "garden", "pitch", "grass", "meadow", "forest", "recreation_ground", "playground"}
 POI = {"bar": 0, "pub": 0, "cafe": 1, "police": 2, "place_of_worship": 3, "townhall": 3, "fuel": 4}
+# Punti d'interesse del gioco: nodo OSM, nome mostrato, tipo.
+# Stuzzi Sushi (Corso Magenta 41) in OSM compare ancora come "SushiMi".
+PLACES = [("938876437", "BAR MARAMAO", "rival"), ("5875318295", "BAR MORELLO", "rival"),
+          ("8520102600", "STUZZI SUSHI", "food"), ("4327352411", "GRAN PRIX", "food")]
 
 
 def main():
@@ -86,23 +90,32 @@ def main():
         if t.get("amenity") in POI and inside(nodes[n.get("id")]):
             pois.append([POI[t["amenity"]]] + [dm(c) for c in nodes[n.get("id")]])
 
-    # Porta dell'Hollywood: punto piu' vicino al nodo del bar su una strada o un marciapiede.
+    def door_near(hx, hy):
+        """Punto piu' vicino su una strada o un marciapiede: li' mettiamo la porta."""
+        best = (1e9, hx, hy)
+        for r in roads:
+            ids = r[2:]
+            for a, b in zip(ids, ids[1:]):
+                ax, ay, bx, by = gnode[2 * a] / 10, gnode[2 * a + 1] / 10, gnode[2 * b] / 10, gnode[2 * b + 1] / 10
+                dx, dy = bx - ax, by - ay
+                L = dx * dx + dy * dy or 1
+                k = max(0, min(1, ((hx - ax) * dx + (hy - ay) * dy) / L))
+                px, py = ax + k * dx, ay + k * dy
+                d = math.hypot(px - hx, py - hy)
+                if d < best[0]:
+                    best = (d, px, py)
+        return best
+
     hx, hy = xy(*HOLLYWOOD)
-    best = (1e9, hx, hy)
-    for r in roads:
-        ids = r[2:]
-        for a, b in zip(ids, ids[1:]):
-            ax, ay, bx, by = gnode[2 * a] / 10, gnode[2 * a + 1] / 10, gnode[2 * b] / 10, gnode[2 * b + 1] / 10
-            dx, dy = bx - ax, by - ay
-            L = dx * dx + dy * dy or 1
-            k = max(0, min(1, ((hx - ax) * dx + (hy - ay) * dy) / L))
-            px, py = ax + k * dx, ay + k * dy
-            d = math.hypot(px - hx, py - hy)
-            if d < best[0]:
-                best = (d, px, py)
+    best = door_near(hx, hy)
+    places = []
+    for nid, name, kind in PLACES:
+        px, py = nodes[nid]
+        _, dx, dy = door_near(px, py)
+        places.append([name, kind, dm(px), dm(py), dm(dx), dm(dy)])
     data = {"w": dm(W), "h": dm(H), "nodes": gnode, "roads": roads, "names": names, "types": ROAD_TYPES,
             "buildings": buildings, "green": green, "water": water, "rivers": rivers, "rails": rails,
-            "pois": pois, "bar": [dm(hx), dm(hy)], "door": [dm(best[1]), dm(best[2])]}
+            "pois": pois, "places": places, "bar": [dm(hx), dm(hy)], "door": [dm(best[1]), dm(best[2])]}
     with open(out, "w", encoding="utf-8") as f:
         f.write("// Generato da tools/osm_export.py. Dati (c) OpenStreetMap contributors, ODbL.\n")
         f.write("window.MAP=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n")
