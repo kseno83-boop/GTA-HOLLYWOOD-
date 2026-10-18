@@ -83,10 +83,10 @@ const RW = { primary: 11, secondary: 10, tertiary: 8.5, unclassified: 7, residen
 const CARRO = new Set(["primary", "secondary", "tertiary", "unclassified", "residential", "living_street", "service"]);
 const adj = NX.map(() => []);
 const roads = M.roads.map(r => {
-  const t = M.types[r[0]], ids = r.slice(2), xs = ids.map(i => NX[i]), ys = ids.map(i => NY[i]);
-  const road = { t, w: RW[t], car: CARRO.has(t), ztl: t === "ztl", name: r[1] >= 0 ? M.names[r[1]] : null, ids,
+  const t = M.types[r[0] % 100], ids = r.slice(2), xs = ids.map(i => NX[i]), ys = ids.map(i => NY[i]);
+  const road = { t, w: RW[t], car: CARRO.has(t), ztl: t === "ztl", oneway: r[0] >= 100, name: r[1] >= 0 ? M.names[r[1]] : null, ids,
     x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
-  for (let i = 0; i < ids.length - 1; i++) { adj[ids[i]].push({ n: ids[i + 1], r: road }); adj[ids[i + 1]].push({ n: ids[i], r: road }); }
+  for (let i = 0; i < ids.length - 1; i++) { adj[ids[i]].push({ n: ids[i + 1], r: road, fwd: true }); adj[ids[i + 1]].push({ n: ids[i], r: road, fwd: false }); }
   return road;
 });
 const polys = a => a.map(f => f.map(v => v / 10));
@@ -271,6 +271,8 @@ const VT = { car: { L: 4.3, W: 1.9, cruise: 10, max: 32, acc: 12 }, ztl: { L: 4.
 const STEAL = { car: "ruba l'auto", ztl: "ruba l'auto", police: "ruba la volante", ambulance: "ruba l'ambulanza", fire: "ruba il camion dei pompieri", truck: "ruba il camion", rider: "ruba la bici", maranza: "ruba la bici", scooter: "ruba il monopattino" };
 const INSULTS = ["Vai piano, pirla!", "Scendi da quella bici!", "Ma va' a lavurà!", "Siamo in centro, deficiente!", "Rallenta!", "Ma guarda questo...", "Ti sei bevuto il cervello?", "Prima o poi ti stendi!"];
 const DRIVER = { car: ["Spostati!", "Oh! Ti muovi?", "Pirla!", "Ma dove vai?"], ztl: ["Ho il permesso, eh!", "Permesso, permesso..."], truck: ["Ma dove sono finito?!", "Navigatore maledetto!", "Qui non ci passo..."] };
+// sensi unici: bici e monopattini li ignorano, così come mezzi con sirena e chi va contromano apposta
+const useEdge = (v, e) => !e.r.oneway || e.fwd || v.kind === "wrong" || v.siren || VT[v.type].bike;
 const useRoad = (permit, r) => r.car || (permit && (r.ztl || r.t === "pedestrian"));
 let evT = R(60, 150), LIGHTS = [];
 function nearestNode(x, y) { let b = 0, bd = 1e9; for (let i = 0; i < NX.length; i++) { const d = (NX[i] - x) ** 2 + (NY[i] - y) ** 2; if (d < bd && adj[i].length) { bd = d; b = i; } } return b; }
@@ -289,12 +291,12 @@ function spawnVeh(type, o = {}, anywhere = false) {
   const T = VT[type], [hw, hh] = viewHalf(), permit = o.permit ?? type !== "car";
   const cand = []; for (let i = 0; i < NX.length; i++) { const dx = Math.abs(NX[i] - P.x), dy = Math.abs(NY[i] - P.y); if (dx < hw + 60 && dy < hh + 60 && (anywhere || dx > hw + 6 || dy > hh + 6)) cand.push(i); }
   for (let k = 0; k < 20 && cand.length; k++) { const n = pick(cand);
-    let opts = adj[n].filter(e => useRoad(permit, e.r)); if (o.ztlOnly) opts = opts.filter(e => !e.r.car); if (!opts.length) continue;
+    let opts = adj[n].filter(e => useRoad(permit, e.r) && useEdge(Object.assign({ type }, o), e)); if (o.ztlOnly) opts = opts.filter(e => !e.r.car); if (!opts.length) continue;
     const e = pick(opts), v = Object.assign({ type, ai: true, tmp: true, x: NX[n], y: NY[n], a: Math.atan2(NY[e.n] - NY[n], NX[e.n] - NX[n]), v: T.cruise * .6, prev: n, next: e.n, road: e.r, permit, lane: 1,
       col: pick(CARCOL), honkT: 0, insT: 0, bub: "", bubT: 0, wheelie: 0 }, o);
     if (T.bike) { if (type === "rider") v.box = pick(["#2ec4b6", "#ff6b35", "#ffd23f"]); v.rider = look(type === "rider" ? { cap: "#202020", shirt: v.box } : { shirt: "#1b1b1b", stripes: "#e8e8e8", cap: "#111" }); }
     cars.push(v); return v; } }
-function laneOff(v) { const r = v.road; if (VT[v.type].bike) return (r.w / 2 - .7) * v.lane; if (!r.car) return 0; return (r.w > 7.5 ? r.w / 4 : r.w / 5) * v.lane; }
+function laneOff(v) { const r = v.road; if (VT[v.type].bike) return (r.w / 2 - .7) * v.lane; if (!r.car) return 0; if (r.oneway) return v.kind === "wrong" ? r.w / 5 : 0; return (r.w > 7.5 ? r.w / 4 : r.w / 5) * v.lane; }
 function chase(v, dt) { const T = VT[v.type], d = hyp(P.x - v.x, P.y - v.y);
   if (!P.car && d < 9) { v.v = Math.max(0, v.v - 25 * dt); if (v.v < .5 && !v.deployed) { v.deployed = true; v.mode = null; v.ai = false; v.inLane = true; v.lights = true; v.siren = false;
       for (const s of [-1, 1]) makePed(v.x - Math.sin(v.a) * s * 1.6, v.y + Math.cos(v.a) * s * 1.6, Object.assign({ cop: true, st: "chase", spd: 5 + Math.ceil(heat) * .5 }, COPLOOK[clamp(Math.ceil(heat), 1, 5)])); }
@@ -326,7 +328,7 @@ function updVeh(dt) {
     const ax = NX[v.prev], ay = NY[v.prev], bx = NX[v.next], by = NY[v.next], L = hyp(bx - ax, by - ay) || 1, off = laneOff(v);
     const tx = bx - (by - ay) / L * off, ty = by + (bx - ax) / L * off;
     if (hyp(tx - v.x, ty - v.y) < Math.max(1.6, v.v * .3)) {
-      const opts = adj[v.next].filter(e => e.n !== v.prev && useRoad(v.permit, e.r)), e = opts.length ? pick(opts) : adj[v.next].find(e => e.n === v.prev);
+      const opts = adj[v.next].filter(e => e.n !== v.prev && useRoad(v.permit, e.r) && useEdge(v, e)), e = opts.length ? pick(opts) : adj[v.next].find(e => e.n === v.prev);
       if (!e) { v.ai = false; v.v = 0; continue; } v.prev = v.next; v.next = e.n; v.road = e.r; continue; }
     let want = T.cruise * (v.road.car ? 1 : .6);
     if (T.bike && v.type !== "rider") { if (v.wheelie > 0) { v.wheelie -= dt; want *= 1.4; } else if (Math.random() < dt * .1) { v.wheelie = R(1.2, 3); insultNear(v.x, v.y); } }
@@ -543,7 +545,10 @@ function drawOut() {
   for (const r of vis) if (!r.car) { ctx.strokeStyle = r.t === "pedestrian" || r.ztl ? PAT.porf : PAT.side; ctx.lineWidth = r.w; roadPath(r); ctx.stroke(); }
   ctx.strokeStyle = "#1c1a22"; for (const r of vis) if (r.car) { ctx.lineWidth = r.w + .4; roadPath(r); ctx.stroke(); }
   ctx.strokeStyle = PAT.asph; for (const r of vis) if (r.car) { ctx.lineWidth = r.w; roadPath(r); ctx.stroke(); }
-  ctx.strokeStyle = "#e9dc8f"; ctx.lineWidth = .18; ctx.setLineDash([2.5, 3]); for (const r of vis) if (r.w >= 8.5 && r.car) { roadPath(r); ctx.stroke(); } ctx.setLineDash([]);
+  ctx.strokeStyle = "#e9dc8f"; ctx.lineWidth = .18; ctx.setLineDash([2.5, 3]); for (const r of vis) if (r.w >= 8.5 && r.car && !r.oneway) { roadPath(r); ctx.stroke(); } ctx.setLineDash([]);
+  ctx.strokeStyle = "rgba(240,236,220,.55)"; ctx.lineWidth = .3; for (const r of vis) if (r.oneway) for (let i = 0; i < r.ids.length - 1; i++) {
+    const a = r.ids[i], b = r.ids[i + 1], L = hyp(NX[b] - NX[a], NY[b] - NY[a]), ux = (NX[b] - NX[a]) / (L || 1), uy = (NY[b] - NY[a]) / (L || 1);
+    for (let d = 6; d < L - 3; d += 18) { const x = NX[a] + ux * d, y = NY[a] + uy * d; ctx.beginPath(); ctx.moveTo(x - ux * .9 - uy * .7, y - uy * .9 + ux * .7); ctx.lineTo(x, y); ctx.lineTo(x - ux * .9 + uy * .7, y - uy * .9 - ux * .7); ctx.moveTo(x, y); ctx.lineTo(x - ux * 2.2, y - uy * 2.2); ctx.stroke(); } }
   ctx.strokeStyle = "#5b4130"; ctx.lineWidth = 2.6; for (const g of rails) { pathPts(g); ctx.stroke(); }
   ctx.strokeStyle = "#c9c0b3"; ctx.lineWidth = .25; ctx.setLineDash([.3, .7]); for (const g of rails) { pathPts(g); ctx.stroke(); } ctx.setLineDash([]);
   drawFx();

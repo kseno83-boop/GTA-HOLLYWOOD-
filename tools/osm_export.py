@@ -54,6 +54,7 @@ def main():
     names, name_idx = [], {}
     buildings, roads, green, water, rivers, rails, pois = [], [], [], [], [], [], []
     ztl_names = set()
+    oneway_names = set()
     for w in root.iter("way"):
         t = tags(w)
         refs = [nd.get("ref") for nd in w.findall("nd") if nd.get("ref") in nodes]
@@ -77,7 +78,13 @@ def main():
             if kind in ZTL_BASE and nm and (t.get("motor_vehicle") in ("private", "no") or t.get("access") in ("private", "no")):
                 kind = "ztl"
                 ztl_names.add(nm)
-            roads.append([ROAD_TYPES.index(kind), name_idx.get(nm, -1)] + ids)
+            # Senso unico: tipo + 100. Con oneway=-1 si inverte l'ordine dei nodi.
+            ow = t.get("oneway") in ("yes", "1", "true", "-1") or t.get("junction") == "roundabout"
+            if t.get("oneway") == "-1":
+                ids = ids[::-1]
+            if ow:
+                oneway_names.add(nm or kind)
+            roads.append([ROAD_TYPES.index(kind) + (100 if ow else 0), name_idx.get(nm, -1)] + ids)
         elif "building" in t and closed and len(pts) > 3:
             try:
                 h = float(t.get("building:levels", "3")) * 3.2
@@ -127,6 +134,7 @@ def main():
         f.write("// Generato da tools/osm_export.py. Dati (c) OpenStreetMap contributors, ODbL.\n")
         f.write("window.MAP=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n")
     print("ZTL:", ", ".join(sorted(ztl_names)))
+    print("Sensi unici:", len(oneway_names), "vie, tra cui Corso Magenta:", "Corso Magenta" in oneway_names)
     print("Scritto %s: %d edifici, %d strade, %d nodi, porta a %.1f m dal nodo del bar"
           % (out, len(buildings), len(roads), len(gnode) // 2, best[0]))
 
