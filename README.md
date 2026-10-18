@@ -11,7 +11,9 @@ Sandbox criminale a vista dall'alto ambientato nel centro di Legnano: open world
 - Centro di Legnano da OpenStreetMap (~1,25 × 1,27 km), edifici in pseudo-3D stile GTA2, minimappa, nome della via.
 - A piedi (WASD + mouse, Shift corre) o in auto (E per rubarla/scendere; W/S gas, A/D sterza, Spazio freno a mano).
 - Passanti con routine sui marciapiedi, panico agli spari, livello di ricercato a 4 stelle, vigili/agenti che ti inseguono e arrestano.
-- Bar Hollywood: E davanti alla porta. Interno in stile Hotline Miami con barista e avventori che entrano, ordinano, si siedono, chiacchierano ed escono; affluenza legata all'ora (aperitivo pieno, chiuso 2:00–6:00).
+- Grafica in stile Hotline Miami: resa a pixel, sprite con contorno e animazioni (camminata, corsa, pistola, seduti, esultanza), sangue e bossoli, camera che oscilla e si sposta verso la mira, scanline e colori neon.
+- Bar Hollywood (E davanti alla porta): bancone a sinistra con barista, tavolone da 8 a destra, maxischermo sulla parete sud. Gli avventori ordinano, bevono in piedi al bancone o si siedono al tavolone; affluenza legata all'ora (più gente quando gioca il Milan, chiuso 2:00–6:00).
+- Calcio al maxischermo: partite di Serie A simulate in tempo di gioco (90' + intervallo), risultato anche fuori dal bar. Il locale è milanista: ai gol del Milan si esulta, ai gol subiti si protesta, e un gol contro l'Inter fa sempre piacere.
 - Ciclo giorno/notte (1 secondo = 1 minuto, T avanza di un'ora). Su telefono: joystick a sinistra, pulsanti SPARA e AZIONE.
 - [Anteprima area di gioco](docs/mappa-area-gioco.svg), rigenerabile con `python3 tools/osm_preview.py`
 
