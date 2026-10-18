@@ -1,7 +1,8 @@
 // Scena dell'interno del Bar Hollywood: inquadratura sulla sala che segue il giocatore verso il fondo, pixel più grossi.
 import { G, P, mouse } from "../core/state";
 import { clamp, TOUCH } from "../core/util";
-import { updBar, guests, barista, BAR_W, BAR_H } from "../sim/bar";
+import { updBar, guests, staff, BAR_W, BAR_H } from "../sim/bar";
+import { nearbyNames } from "../characters/runtime";
 import { drawBar } from "../render/hollywood";
 import { B2S } from "../render/view";
 import { WorldScene } from "./WorldScene";
@@ -20,6 +21,8 @@ export class BarScene extends WorldScene {
   protected pixelSize() { return clamp(Math.round(G.S / 18), 2, 4); }
   protected draw() { drawBar(); }
   protected overlay() {
-    for (const g of [barista, ...guests]) if (g.bubT > 0) { const [bx, by] = this.local(...B2S(g.x, g.y)); this.bubbles.add(bx, by - G.S * .55, g.bub); }
+    for (const g of [...staff, ...guests]) if (g.bubT > 0) { const [bx, by] = this.local(...B2S(g.x, g.y)); this.bubbles.add(bx, by - G.S * .55, g.bub); }
+    // nome dei personaggi fissi vicini (cartellino blu)
+    for (const { nome, b } of nearbyNames()) if (!(b.bubT > 0)) { const [bx, by] = this.local(...B2S(b.x, b.y)); this.bubbles.add(bx, by - G.S * 1.0, nome, true); }
   }
 }

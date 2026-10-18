@@ -5,10 +5,10 @@ import { track } from "../audio/music";
 import { updDialog } from "../characters/runtime";
 
 export function tick(dt: number) {
-  if (G.started) { const h0 = G.hour; G.hour = (G.hour + dt / 60) % 24; checkKick(h0, G.hour); track.t -= dt; P.hurtT -= dt; G.msgT -= dt; G.calm += dt;
+  if (G.started) { const h0 = G.hour; G.hour = (G.hour + dt / 60) % 24; if (G.hour < h0) G.day++; checkKick(h0, G.hour); track.t -= dt; P.hurtT -= dt; G.msgT -= dt; G.calm += dt;
     if (G.calm > 20 && G.heat > 0) { G.heat = Math.max(0, G.heat - 1); G.calm = 10; } }
   updMatch(G.started ? dt : 0, dt);
   updDialog(dt);
 }
 /** Tasto T: avanti di un'ora (la partita in corso avanza di 60 minuti). */
-export function skipHour() { const had = !!F.match, h0 = G.hour; G.hour = (G.hour + 1) % 24; if (had) updMatch(60, 0); checkKick(h0, G.hour); updMatch(0, 0); say("+1 ORA", 1); }
+export function skipHour() { const had = !!F.match, h0 = G.hour; G.hour = (G.hour + 1) % 24; if (G.hour < h0) G.day++; if (had) updMatch(60, 0); checkKick(h0, G.hour); updMatch(0, 0); say("+1 ORA", 1); }

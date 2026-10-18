@@ -14,7 +14,7 @@ Il gioco è in `game/` (Phaser 4 + TypeScript + Vite, scelto dall'utente). `demo
 - `game/src/sim/` — `peds.ts` (passanti, bande, sbirri, ricercato), `traffic.ts`, `player.ts`, `bar.ts` (interno Hollywood), `football.ts` (maxischermo), `clock.ts`.
 - `game/src/render/` — il mondo è disegnato con Canvas 2D su una tela a bassa risoluzione (`view.ts`, una CanvasTexture di Phaser) per tenere lo stile Hotline Miami: `street.ts`, `hollywood.ts`, `sprites.ts`, `pitch.ts`.
 - `game/src/scenes/` — `StreetScene` e `BarScene` (base comune `WorldScene`: simula, disegna, ingrandisce, oscillazione camera) e `HudScene` (sempre attiva: HUD, dialoghi, tastiera/mouse/touch).
-- `game/src/characters/` — personaggi fissi: formato in `types.ts`, elenco `PERSONAGGI` in `index.ts` (vuoto finché l'utente non li definisce), istruzioni in `README.md`, messa in scena in `runtime.ts`.
+- `game/src/characters/` — personaggi fissi: formato in `types.ts`, elenco `PERSONAGGI` in `index.ts`, turni dietro il bancone in `turni.ts`, istruzioni in `README.md`, messa in scena in `runtime.ts`.
 - `game/src/audio/` — effetti sintetizzati (Web Audio), volumi, colonna sonora. `game/public/music/playlist.js` elenca i brani (file audio esclusi da git: protetti da copyright).
 - `tools/osm_export.py` — OSM → `game/src/data/map.json` (o `demo/map-data.js` se l'output finisce in .js).
 - `tools/osm_preview.py` — anteprima SVG dell'area (`docs/mappa-area-gioco.svg`); contiene bbox e coordinate dell'Hollywood.
@@ -43,6 +43,12 @@ Tasti in gioco: WASD/mouse, E azione/parla, T +1 ora, M audio, N brano, F contat
 - Motore: Phaser 4 + TypeScript + Vite (Godot eventualmente più avanti, per Steam/console/store).
 - Personaggi: tasto E per parlare, riquadro di dialogo stile Hotline Miami (proposto all'utente, non ancora confermato esplicitamente).
 - Audio sintetizzato con Web Audio (nessun file). Colonna sonora fornita dall'utente: pulsante "Carica i tuoi brani" (file locali) o `game/public/music/`.
+
+## Personaggi (definiti dall'utente)
+- **Proprietari:** **Max** (omaccione alto, capelli bianchi un po' pazzi, sempre in infradito) e **Giada** (bassina, giovane, pallida, capelli neri). Raramente insieme.
+- **Staff a rotazione:** **Mary** e **Annie** (capelli neri), **Martina** (castana), **Lollo**/Lorenzo (alto, giovane, capelli neri).
+- Turni in `characters/turni.ts`: fasce 6–14, 14–20, 20–2; per fascia un proprietario (12% entrambi) + uno dello staff a rotazione per giorno (`G.day`). Al cambio turno chi finisce esce dalla porta e chi arriva entra. Nomi sopra la testa quando sei vicino. **Battute ancora da scrivere** (dialogo vuoto: non parlano). Colori dei vestiti non indicati: staff in maglietta nera come nelle foto. Mary e Annie oggi si distinguono solo dal nome.
+- Prossimo passo: gli abituè.
 
 ## Da fare / in sospeso
 - Dialoghi, missioni e personaggi: li definisce l'utente. Non inventarli.

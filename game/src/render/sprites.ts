@@ -14,13 +14,16 @@ function capsule(x1: number, y1: number, x2: number, y2: number, w: number, col:
 function blob(x: number, y: number, rx: number, ry: number, col: string) { const ctx = V.ctx; ctx.fillStyle = col; ctx.strokeStyle = K; ctx.lineWidth = .07; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.fill(); ctx.stroke(); }
 export function person(o: Look & Pick<Body, "x" | "y" | "a"> & { flash?: number }, pose: Pose, sc = 1.9) {
   const ctx = V.ctx, now = G.now;
-  ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(o.a); ctx.scale(sc, sc);
+  ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(o.a); ctx.scale(sc * (o.size ?? 1), sc * (o.size ?? 1));
   if (pose === "dead") { capsule(-.1, -.12, -.55, -.38, .13, o.pants); capsule(-.1, .12, -.6, .2, .13, o.pants); capsule(.1, -.22, .45, -.5, .1, o.shirt); capsule(.1, .22, .5, .35, .1, o.shirt);
     blob(0, 0, .28, .22, o.shirt); blob(.36, 0, .14, .14, o.skin); ctx.restore(); return; }
   const s = Math.sin(o.anim || 0), moving = pose === "walk" || pose === "run", bob = moving ? 1 + Math.abs(s) * .05 : pose === "cheer" ? 1.08 + Math.abs(Math.sin(now / 90)) * .08 : 1;
   ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(.06, .08, .36, .42, 0, 0, 7); ctx.fill(); ctx.scale(bob, bob);
   if (pose === "sit") { capsule(.05, -.13, .48, -.13, .15, o.pants); capsule(.05, .13, .48, .13, .15, o.pants); }
   else if (moving) { const st = pose === "run" ? .3 : .22; capsule(0, -.13, s * st, -.13, .16, o.pants); capsule(0, .13, -s * st, .13, .16, o.pants); }
+  // infradito: piedi nudi con la striscia
+  if (o.flipflops) { const st = pose === "run" ? .3 : .22, fx = pose === "sit" ? [.54, .54] : moving ? [s * st + .08, -s * st + .08] : [.22, .2];
+    for (const [k, fy] of [[0, -.13], [1, .13]]) { blob(fx[k], fy, .08, .055, o.skin); ctx.strokeStyle = "#2a6fd0"; ctx.lineWidth = .03; ctx.beginPath(); ctx.moveTo(fx[k] - .04, fy - .04); ctx.lineTo(fx[k] + .03, fy); ctx.lineTo(fx[k] - .04, fy + .04); ctx.stroke(); } }
   // braccia
   if (pose === "gun") { capsule(0, -.26, .42, -.06, .11, o.shirt); capsule(0, .26, .42, .06, .11, o.shirt); blob(.45, 0, .08, .09, o.skin);
     ctx.fillStyle = K; ctx.fillRect(.45, -.045, .32, .09); if (o.flash && o.flash > 0) { ctx.fillStyle = "#fff36b"; ctx.beginPath(); ctx.moveTo(.78, 0); ctx.lineTo(1.15, -.16); ctx.lineTo(1.0, 0); ctx.lineTo(1.15, .16); ctx.fill(); } }
@@ -33,9 +36,14 @@ export function person(o: Look & Pick<Body, "x" | "y" | "a"> & { flash?: number 
   if (o.stripes) { ctx.save(); ctx.clip(); ctx.fillStyle = o.stripes; for (let y = -.26; y < .3; y += .16) ctx.fillRect(-.2, y, .4, .07); ctx.restore(); }
   if (o.apron) { ctx.fillStyle = o.apron; ctx.fillRect(.05, -.2, .12, .4); }
   ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fillRect(-.17, -.28, .09, .56);
-  // testa
+  // testa (capelli lunghi: ricadono dietro la nuca)
+  if (o.hairStyle === "long" && !o.cap) blob(-.15, 0, .13, .15, o.hair);
   blob(.03, 0, .15, .15, o.skin); ctx.fillStyle = o.cap || o.hair; ctx.beginPath(); ctx.arc(.01, 0, .155, Math.PI / 2, Math.PI * 1.5); ctx.fill();
-  if (o.cap) { ctx.fillRect(.08, -.12, .14, .24); } else { ctx.beginPath(); ctx.ellipse(-.02, 0, .12, .15, 0, 0, 7); ctx.fill(); }
+  if (o.cap) { ctx.fillRect(.08, -.12, .14, .24); } else { ctx.beginPath(); ctx.ellipse(-.02, 0, o.hairStyle === "short" ? .1 : .12, o.hairStyle === "short" ? .13 : .15, 0, 0, 7); ctx.fill(); }
+  // capelli arruffati: ciuffi che sparano in tutte le direzioni
+  if (o.hairStyle === "wild" && !o.cap) { ctx.fillStyle = o.hair; ctx.strokeStyle = K; ctx.lineWidth = .03;
+    for (let k = 0; k < 9; k++) { const t = Math.PI * (.45 + k * .14), r = .15 + (k % 3) * .025; ctx.beginPath(); ctx.arc(Math.cos(t) * r, Math.sin(t) * r, .055, 0, 7); ctx.fill(); ctx.stroke(); }
+    ctx.beginPath(); ctx.ellipse(-.03, 0, .13, .16, 0, 0, 7); ctx.fill(); }
   ctx.restore(); }
 
 export function vehicle(c: Vehicle, night: boolean) { const ctx = V.ctx, T = VT[c.type], L = T.L / 2, W = T.W / 2, blink = Math.floor(G.now / 250) % 2;

@@ -3,7 +3,8 @@ import { G, P, peds, viewHalf, type Body } from "../core/state";
 import { hyp, pick } from "../core/util";
 import { DOOR, PLACES } from "../world/map";
 import { makePed } from "../sim/peds";
-import { barHooks, barista, guests, freeSlots, leaveBar, newGuest } from "../sim/bar";
+import { barHooks, staff, staffArrive, staffLeave, GENERIC, guests, freeSlots, leaveBar, newGuest } from "../sim/bar";
+import { TURNI, inServizio } from "./turni";
 import { PERSONAGGI } from "./index";
 import { SEATS } from "../world/dehors";
 import type { Personaggio } from "./types";
@@ -18,18 +19,22 @@ const byId = (id: string) => PERSONAGGI.find(c => c.id === id);
 const dead = new Set<string>();
 
 // --- Hollywood ---
-/** Aspetto del barista generico, da ripristinare quando il personaggio barista non c'è. */
-let BARISTA0: Partial<Body> | null = null;
 function guestFor(c: Personaggio, seated: boolean) {
   const kind = c.posto as "bancone" | "tavolo", slot = freeSlots().find(s => s.kind === kind);
   if (!slot) return;
   newGuest(seated, { npc: c.id, team: c.squadra ?? null, stripes: null, t: 1e9, ...c.aspetto }, slot);
 }
+/** Chi deve stare dietro il bancone adesso: chi è nei turni segue TURNI, gli altri baristi i loro orari. */
+function dietroBancone() {
+  const turno = new Set(inServizio());
+  return PERSONAGGI.filter(c => c.posto === "barista" && !dead.has(c.id) &&
+    ([...TURNI.proprietari, ...TURNI.staff].includes(c.id) ? turno.has(c.id) : present(c)));
+}
 function syncBar(entering: boolean) {
-  BARISTA0 ??= { shirt: barista.shirt, pants: barista.pants, skin: barista.skin, hair: barista.hair, apron: barista.apron, cap: barista.cap, stripes: barista.stripes };
-  const bc = PERSONAGGI.find(c => c.posto === "barista" && present(c));
-  if (bc && barista.npc !== bc.id) Object.assign(barista, BARISTA0, bc.aspetto, { npc: bc.id });
-  else if (!bc && barista.npc) Object.assign(barista, BARISTA0, { npc: undefined });
+  const want = dietroBancone();
+  for (const s of [...staff]) if (!s.leaving && (s.npc ? !want.some(c => c.id === s.npc) : want.length > 0)) staffLeave(s, entering || !s.npc);
+  for (const c of want) if (!staff.some(s => s.npc === c.id && !s.leaving)) staffArrive({ npc: c.id, stripes: null, ...c.aspetto }, entering);
+  if (!staff.length) staff.push(GENERIC());
   for (const c of PERSONAGGI) { if (c.posto !== "bancone" && c.posto !== "tavolo") continue;
     const g = guests.find(g => g.npc === c.id), here = present(c) && !dead.has(c.id);
     if (here && !g) guestFor(c, entering);
@@ -62,7 +67,7 @@ export function updStreetNpcs(dt: number) {
 // --- Frasi spontanee ---
 function bodies(): [Personaggio, Body][] {
   const out: [Personaggio, Body][] = [];
-  if (G.scene === "bar") { if (barista.npc) out.push([byId(barista.npc)!, barista]); for (const g of guests) if (g.npc && g.st !== "out") out.push([byId(g.npc)!, g]); }
+  if (G.scene === "bar") { for (const s of staff) if (s.npc && !s.leaving) out.push([byId(s.npc)!, s]); for (const g of guests) if (g.npc && g.st !== "out") out.push([byId(g.npc)!, g]); }
   else for (const p of peds) if (p.npc && p.st !== "dead") out.push([byId(p.npc)!, p]);
   return out.filter(([c]) => c);
 }
@@ -76,17 +81,20 @@ export const D = { id: "", nome: "", text: "", i: 0, shown: 0, scene: "" };
 let talkBody: Body | null = null;
 export function talkTarget(): { c: Personaggio; b: Body } | null {
   let best: { c: Personaggio; b: Body } | null = null, bd = 1e9;
-  for (const [c, b] of bodies()) { const d = hyp(b.x - P.x, b.y - P.y), r = b === barista ? 2.9 : 2;
+  for (const [c, b] of bodies()) { if (!c.dialogo.length) continue; const d = hyp(b.x - P.x, b.y - P.y), r = isStaff(b) ? 2.9 : 2;
     if (d < r && d < bd && !P.car) { bd = d; best = { c, b }; } }
   return best;
 }
+const isStaff = (b: Body) => (staff as Body[]).includes(b);
+/** Personaggi vicini al giocatore (per mostrarne il nome sopra la testa). */
+export function nearbyNames(r = 4.5) { return bodies().filter(([, b]) => hyp(b.x - P.x, b.y - P.y) < r).map(([c, b]) => ({ nome: c.nome, b })); }
 export function talk(t: { c: Personaggio; b: Body }) {
   if (!t.c.dialogo.length) return;
   if (D.id === t.c.id) { if (D.shown < D.text.length) { D.shown = D.text.length; return; } D.i++; }
   else { D.id = t.c.id; D.nome = t.c.nome; D.i = 0; }
   if (D.i >= t.c.dialogo.length) { closeDialog(); return; }
   D.text = t.c.dialogo[D.i]; D.shown = 0; D.scene = G.scene; talkBody = t.b; t.b.bubT = 0;
-  if (G.scene === "out" || t.b !== barista) t.b.a = Math.atan2(P.y - t.b.y, P.x - t.b.x);
+  if (G.scene === "out" || !isStaff(t.b)) t.b.a = Math.atan2(P.y - t.b.y, P.x - t.b.x);
 }
 export function closeDialog() { D.id = ""; D.text = ""; talkBody = null; }
 /** Avanza la scrittura e chiude il dialogo se ti allontani o cambi scena. */

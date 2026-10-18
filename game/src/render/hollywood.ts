@@ -4,7 +4,7 @@
 import { G, P, PLOOK } from "../core/state";
 import { K } from "../core/util";
 import { F, playing, clockLine } from "../sim/football";
-import { guests, barista, SLOTS, TABLE, HIGH, SCREEN, KITCHEN, COUNTER, FRIDGE, ALCOVE, WAINSCOT, LONG_TABLE, DRESSER, WC_WALL, BACK_TABLES, WALLS, DRINKS, BAR_W, BAR_H, type WallStyle } from "../sim/bar";
+import { guests, staff, SLOTS, TABLE, HIGH, SCREEN, KITCHEN, COUNTER, FRIDGE, ALCOVE, WAINSCOT, LONG_TABLE, DRESSER, WC_WALL, BACK_TABLES, WALLS, DRINKS, BAR_W, BAR_H, type WallStyle } from "../sim/bar";
 import { V, worldXf } from "./view";
 import { person, drawFx } from "./sprites";
 import { renderPitch } from "./pitch";
@@ -51,12 +51,14 @@ export function drawBar() {
   drawFx();
 
   // cucina dietro al bancone: scaffali bianchi, cappa, affettatrice; frigo nell'angolo
-  rect(KITCHEN, "#2a2a2e"); rect([.35, 9.6, .45, 3.0], "#e9e6df", K, .04);
+  rect(KITCHEN, "#9a958c"); ctx.strokeStyle = "rgba(0,0,0,.15)"; ctx.lineWidth = .02; ctx.beginPath();
+  for (let x = KITCHEN[0] + .3; x < KITCHEN[0] + KITCHEN[2]; x += .3) { ctx.moveTo(x, KITCHEN[1]); ctx.lineTo(x, KITCHEN[1] + KITCHEN[3]); }
+  for (let y = KITCHEN[1] + .3; y < KITCHEN[1] + KITCHEN[3]; y += .3) { ctx.moveTo(KITCHEN[0], y); ctx.lineTo(KITCHEN[0] + KITCHEN[2], y); } ctx.stroke(); rect([.35, 9.6, .45, 3.0], "#e9e6df", K, .04);
   for (let i = 0; i < 9; i++) dot(.57, 9.85 + i * .3, .09, ["#f2c94c", "#3d7fe0", "#e8474f", "#efe8dc", "#49b86b"][i % 5]);
   rect([.35, 12.9, 1.0, 1.4], "#9aa0a8", K, .05); ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = .03; ctx.beginPath(); for (let y = 13.0; y < 14.3; y += .14) { ctx.moveTo(.4, y); ctx.lineTo(1.3, y); } ctx.stroke();
   dot(1.15, 15.4, .22, "#c9ccd6", K); dot(1.15, 15.4, .1, "#d3333a");
   rect(FRIDGE, "#dcdcd8", K, .06); ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.fillRect(.35, 17.8, 1.2, .04);
-  person(barista, barista.moving ? "walk" : "idle", 1.3);
+  for (const b of staff) person(b, b.moving ? "walk" : "idle", 1.3);
   // bancone: piano in legno, fronte coperto di adesivi, spine di rame, cassa, bottiglie di gin, lavagnetta delle birre
   rect(COUNTER, "#6e3b22", K, .08); ctx.fillStyle = "#8a4b2a"; ctx.fillRect(COUNTER[0] + .55, COUNTER[1], .35, COUNTER[3]);
   for (let y = COUNTER[1] + .1, k = 0; y < COUNTER[1] + COUNTER[3] - .1; y += .22, k++) { ctx.fillStyle = ["#ff2e88", "#29f2e4", "#ffd166", "#f6f0ff", "#9b5de5", "#49b86b"][k % 6]; ctx.fillRect(COUNTER[0] + .8, y, .08, .14); }

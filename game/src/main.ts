@@ -10,6 +10,8 @@ import { guests } from "./sim/bar";
 import { F, scoreLine } from "./sim/football";
 import { PERSONAGGI } from "./characters";
 import { D, initCharacters } from "./characters/runtime";
+import { inServizio } from "./characters/turni";
+import { staff } from "./sim/bar";
 import { StreetScene } from "./scenes/StreetScene";
 import { BarScene } from "./scenes/BarScene";
 import { HudScene } from "./scenes/HudScene";
@@ -38,6 +40,6 @@ async function boot() {
   });
   window.addEventListener("resize", () => { measure(); game.scale.setZoom(1 / G.dpr); game.scale.resize(Math.round(G.cw * G.dpr), Math.round(G.ch * G.dpr)); });
   // accesso per i test automatici (tools/smoke_test.js)
-  Object.assign(window, { __gta: { game, G, P, peds, cars, guests, VT, DOOR, F, scoreLine, PERSONAGGI, D, dehors: { toWorld, toLocal, TABLES, EDGE, U0, U1 }, map: { roads, NX, NY } } });
+  Object.assign(window, { __gta: { game, G, P, peds, cars, guests, VT, DOOR, F, scoreLine, PERSONAGGI, D, inServizio, staff, dehors: { toWorld, toLocal, TABLES, EDGE, U0, U1 }, map: { roads, NX, NY } } });
 }
 boot();

@@ -1,13 +1,13 @@
 # Personaggi fissi
 
 I personaggi si aggiungono in `index.ts`, nell'elenco `PERSONAGGI`. Il formato è descritto in `types.ts`.
-Per ora l'elenco è vuoto: i personaggi li definisce l'autore del gioco.
+I personaggi li definisce l'autore del gioco. Ci sono già i proprietari (Max, Giada) e lo staff (Mary, Annie, Martina, Lollo): stanno dietro il bancone secondo i turni in `turni.ts`.
 
 ## Cosa fa già il gioco con un personaggio
 
 - **Presenza per orario**: compare solo nelle fasce di `orari` (ore di gioco; `[22, 2]` passa la mezzanotte).
 - **Posto**:
-  - `"barista"`: prende il posto del barista dietro il bancone dell'Hollywood;
+  - `"barista"`: lavora dietro il bancone dell'Hollywood (chi è elencato in `turni.ts` segue i turni, gli altri i propri `orari`);
   - `"bancone"` o `"tavolo"`: avventore fisso dell'Hollywood. Entra dalla porta, resta finché è nel suo orario, poi esce;
   - `"presidenziale"`: seduto fuori, al tavolo presidenziale del dehors (subito a sinistra dell'entrata guardando la porta dalla strada; riservato agli abituali e al protagonista);
   - `{ fuori: "BAR MARAMAO" }` (oppure `"HOLLYWOOD"`, `"BAR MORELLO"`, `"STUZZI SUSHI"`, `"GRAN PRIX"`): sta in strada davanti a quel locale.
@@ -27,7 +27,7 @@ I valori qui sotto sono segnaposto, da sostituire con quelli veri:
   ruolo: "chi è (solo promemoria)",
   posto: "bancone",                 // "barista" | "bancone" | "tavolo" | "presidenziale" | { fuori: "BAR MARAMAO" }
   orari: [[18, 24], [0, 1.5]],      // facoltativo
-  aspetto: { shirt: "#d3121e", stripes: "#111", hair: "#2b1d14", cap: "#111" }, // facoltativo
+  aspetto: { shirt: "#d3121e", stripes: "#111", hair: "#2b1d14", cap: "#111", size: 1, hairStyle: "short", flipflops: false }, // facoltativo
   squadra: "MILAN",                 // facoltativo
   dialogo: ["Prima battuta", "Seconda battuta"],
   frasi: ["Frase detta da solo"],   // facoltativo

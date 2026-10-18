@@ -13,7 +13,7 @@ export interface Personaggio {
   ruolo?: string;
   /**
    * Dove sta:
-   * - "barista": prende il posto del barista dietro il bancone dell'Hollywood;
+   * - "barista": lavora dietro il bancone dell'Hollywood (se è in TURNI in turni.ts segue i turni, altrimenti gli orari);
    * - "bancone" / "tavolo": avventore fisso dell'Hollywood (in piedi al bancone o al tavolone);
    * - "presidenziale": seduto fuori al tavolo presidenziale del dehors (riservato agli abituali e al protagonista);
    * - { fuori: luogo }: in strada, davanti alla porta di quel locale.
@@ -21,11 +21,12 @@ export interface Personaggio {
   posto: "barista" | "bancone" | "tavolo" | "presidenziale" | { fuori: Luogo };
   /** Fasce orarie di presenza in ore di gioco, es. [[18, 24], [0, 1.5]]. Se manca: sempre (negli orari di apertura). */
   orari?: [number, number][];
-  /** Aspetto: colori CSS. cap = cappellino, stripes = righe sulla maglia, apron = grembiule. */
-  aspetto?: Partial<Pick<Look, "shirt" | "pants" | "skin" | "hair" | "cap" | "stripes" | "apron">>;
+  /** Aspetto: colori CSS. cap = cappellino, stripes = righe sulla maglia, apron = grembiule;
+   *  size = corporatura (1 normale, 1.3 omone, 0.86 bassina), hairStyle = "short" | "long" | "wild" (arruffati), flipflops = infradito. */
+  aspetto?: Partial<Pick<Look, "shirt" | "pants" | "skin" | "hair" | "cap" | "stripes" | "apron" | "size" | "hairStyle" | "flipflops">>;
   /** Squadra del cuore (nome come nel calcio al maxischermo, es. "MILAN"): decide come reagisce ai gol. */
   squadra?: string | null;
-  /** Dialogo quando gli parli (tasto E / AZIONE): una battuta per pressione, poi ricomincia. */
+  /** Dialogo quando gli parli (tasto E / AZIONE): una battuta per pressione, poi ricomincia. Vuoto = non parla (ancora). */
   dialogo: string[];
   /** Frasi che dice ogni tanto da solo (nuvoletta). */
   frasi?: string[];

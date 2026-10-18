@@ -63,7 +63,20 @@ export interface Guest extends Body {
   npc?: string;
 }
 export const guests: Guest[] = [];
-export const barista = look({ x: 1.45, y: 12.5, a: 0, ty: 12.5, shirt: "#ece6da", apron: "#1d1d22", hair: "#2b1d14", bub: "", bubT: 0, moving: false, npc: undefined as string | undefined });
+/** Chi lavora dietro il bancone: personaggi di turno (vedi characters/turni.ts) o, se non c'è nessuno, un barista generico. */
+export interface Staff extends Body { ty: number; npc?: string; path: [number, number][]; leaving?: boolean }
+export const GENERIC = (): Staff => look({ x: 1.45, y: 12.5, a: 0, ty: 12.5, shirt: "#ece6da", apron: "#1d1d22", hair: "#2b1d14", bub: "", bubT: 0, moving: false, path: [] });
+export const staff: Staff[] = [GENERIC()];
+/** Ingresso dietro al bancone: dal lato nord, tra la mensola viola e la testa del bancone. */
+const BEHIND: [number, number][] = [[BAR.hub.x, BAR.hub.y], [4.2, 10.0], [2.35, 9.95], [1.45, 9.95]];
+/** Un membro dello staff entra in servizio: già al bancone (all'apertura della scena) o entrando dalla porta. */
+export function staffArrive(b: Partial<Staff>, atCounter: boolean) {
+  const ty = 10.6 + Math.random() * 5, s = Object.assign(GENERIC(), { apron: undefined, ty }, b);
+  if (atCounter) Object.assign(s, { x: 1.45, y: ty }); else Object.assign(s, { x: BAR.door.x, y: BAR.door.y, path: [...BEHIND, [1.45, ty]] });
+  staff.push(s); return s; }
+/** Fine turno: esce dalla porta (o sparisce subito se la scena non è aperta). */
+export function staffLeave(s: Staff, now = false) { if (now) { staff.splice(staff.indexOf(s), 1); return; }
+  s.leaving = true; s.path = [[1.45, 9.95], ...[...BEHIND].reverse(), [BAR.door.x, BAR.door.y]]; }
 let guestT = 0;
 export const DRINKS = Array.from({ length: 14 }, () => [TABLE[0] + .2 + Math.random() * (TABLE[2] - .4), TABLE[1] + .3 + Math.random() * (TABLE[3] - .6), pick(["#f3b33d", "#ff6b3d", "#f6f0d0", "#c2185b"])] as [number, number, string]);
 /** Avventori attesi per ora del giorno (chiuso dalle 2 alle 6), di più quando gioca il Milan. */
@@ -110,6 +123,18 @@ export function updBar(dt: number) {
     else { if (!g.npc) g.t -= dt * (present > tgt + 1 ? 3 : 1);
       if (!g.npc && Math.random() < dt / 11 && !g.bubT) { g.bub = pick(playing() ? LINES.concat(["Dai che la vinciamo", "Tira!!", "Arbitro!", "Passala!"]) : LINES); g.bubT = 2.2; }
       if (g.t <= 0) leaveBar(g); } }
-  barista.ty = ordering && ordering.x < 4 ? clamp(ordering.y, 10.5, 15.9) : (Math.random() < dt / 3 ? R(10.5, 15.9) : barista.ty);
-  const bd = barista.ty - barista.y; if (Math.abs(bd) > .1) { barista.y += Math.sign(bd) * Math.min(Math.abs(bd), 1.8 * dt); barista.anim += dt * 7; barista.a = bd > 0 ? Math.PI / 2 : -Math.PI / 2; barista.moving = true; } else { barista.a = 0; barista.moving = false; } }
+  updStaff(dt, ordering);
+}
+function updStaff(dt: number, ordering: Guest | null) {
+  let server = true;
+  for (let i = staff.length - 1; i >= 0; i--) { const b = staff[i]; if (b.bubT > 0) b.bubT -= dt;
+    if (b.path.length) { const [tx, ty] = b.path[0], dx = tx - b.x, dy = ty - b.y, d = hyp(dx, dy);
+      if (d < .08) { b.path.shift(); if (!b.path.length && b.leaving) staff.splice(i, 1); continue; }
+      const step = Math.min(d, 1.6 * dt); b.x += dx / d * step; b.y += dy / d * step; b.a = Math.atan2(dy, dx); b.anim += dt * 7; b.moving = true; continue; }
+    // il primo libero serve chi sta ordinando, gli altri si spostano lungo il bancone senza pestarsi i piedi
+    if (server && ordering && ordering.x < 4) { b.ty = clamp(ordering.y, 10.5, 15.9); server = false; }
+    else if (Math.random() < dt / 3) b.ty = R(10.5, 15.9);
+    for (const o of staff) if (o !== b && !o.path.length && Math.abs(o.ty - b.ty) < .8) b.ty = clamp(b.ty + (b.ty >= o.ty ? .9 : -.9), 10.5, 15.9);
+    const bd = b.ty - b.y; if (Math.abs(bd) > .1) { b.y += Math.sign(bd) * Math.min(Math.abs(bd), 1.8 * dt); b.anim += dt * 7; b.a = bd > 0 ? Math.PI / 2 : -Math.PI / 2; b.moving = true; } else { b.a = 0; b.moving = false; } }
+}
 export function leaveBar(g: Guest) { g.st = "out"; g.path = [...g.slot.via].reverse().concat([[BAR.hub.x, BAR.hub.y], [BAR.door.x, BAR.door.y]]); }

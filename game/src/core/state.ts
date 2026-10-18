@@ -5,6 +5,8 @@ import type { Road } from "../world/map";
 export interface Look {
   shirt: string; pants: string; skin: string; hair: string; anim: number;
   stripes?: string | null; cap?: string; apron?: string;
+  /** Corporatura (1 = normale), capigliatura, infradito ai piedi. */
+  size?: number; hairStyle?: "short" | "long" | "wild"; flipflops?: boolean;
 }
 /** Qualunque persona disegnabile: passante, avventore, giocatore. */
 export interface Body extends Look {
@@ -43,7 +45,7 @@ export const P = {
 
 /** Variabili globali di partita (orario, ricercato, camera, messaggi). */
 export const G = {
-  scene: "out" as Scene, hour: 18.5, heat: 0, calm: 0, msg: "", msgT: 0, street: "" as string | null, streetT: 0,
+  scene: "out" as Scene, hour: 18.5, day: 0, heat: 0, calm: 0, msg: "", msgT: 0, street: "" as string | null, streetT: 0,
   /** pixel CSS per metro */
   S: 20, camX: 0, camY: 0, started: false, shake: 0, now: 0,
   /** dimensioni della finestra in pixel CSS e rapporto pixel del dispositivo */
