@@ -4,6 +4,7 @@ import { G, P, PLOOK, peds, cars, dark } from "../core/state";
 import { K, hyp } from "../core/util";
 import { NX, NY, WW, WH, roads, green, water, rivers, rails, buildings, DOOR, SIGN, POIS, PLACES, type Road } from "../world/map";
 import { V, PAT, worldXf } from "./view";
+import { drawDehorsGround, drawDehorsTop, drawDehorsGlow } from "./dehors";
 import { LIGHTS, person, vehicle, drawFx, drawBullets, drawLights, pedPose } from "./sprites";
 
 function pathPts(p: number[]) { const ctx = V.ctx; ctx.beginPath(); ctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]); }
@@ -35,11 +36,13 @@ export function drawOut() {
   const pulse = .5 + .5 * Math.sin(now / 250);
   ctx.strokeStyle = `rgba(255,46,136,${.45 + .5 * pulse})`; ctx.lineWidth = .3; ctx.beginPath(); ctx.arc(DOOR.x, DOOR.y, 1.4 + pulse * .4, 0, 7); ctx.stroke();
   for (const q of PLACES) { ctx.strokeStyle = q.col; ctx.globalAlpha = .45 + .4 * pulse; ctx.lineWidth = .25; ctx.beginPath(); ctx.arc(q.dx, q.dy, 1.2 + pulse * .3, 0, 7); ctx.stroke(); } ctx.globalAlpha = 1;
+  drawDehorsGround();
   LIGHTS.length = 0; for (const c of cars) if (c.x > vx0 && c.x < vx1 && c.y > vy0 && c.y < vy1) vehicle(c, nt > .3);
   for (const p of peds) if (p.st === "dead") person(p, "dead");
   for (const p of peds) if (p.st !== "dead") person(p, pedPose(p));
   if (!P.car) person(Object.assign(PLOOK, { x: P.x, y: P.y, a: P.a, anim: P.anim, flash: P.flash }), "gun");
   drawBullets();
+  drawDehorsTop(nt);
   // edifici in pseudo-3D: tetti proiettati verso la camera come in GTA2
   const CH = Math.max(55, 1300 / S), list = buildings.filter(b => b.x1 > vx0 && b.x0 < vx1 && b.y1 > vy0 && b.y0 < vy1);
   list.sort((a, b) => hyp(b.cx - camX, b.cy - camY) - hyp(a.cx - camX, a.cy - camY));
@@ -60,6 +63,7 @@ export function drawOut() {
       const g = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 9); g.addColorStop(0, `rgba(${col},${.4 * nt})`); g.addColorStop(1, `rgba(${col},0)`); ctx.fillStyle = g; ctx.fillRect(q.x - 9, q.y - 9, 18, 18); }
     if (!P.car) { const l = ctx.createRadialGradient(P.x, P.y, 0, P.x, P.y, 5); l.addColorStop(0, `rgba(255,220,200,${.3 * nt})`); l.addColorStop(1, "rgba(255,220,200,0)"); ctx.fillStyle = l; ctx.fillRect(P.x - 5, P.y - 5, 10, 10); }
     for (const q of PLACES) { const l = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 10); l.addColorStop(0, q.col + "55"); l.addColorStop(1, q.col + "00"); ctx.fillStyle = l; ctx.fillRect(q.x - 10, q.y - 10, 20, 20); }
+    drawDehorsGlow(nt);
     const g = ctx.createRadialGradient(SIGN.x, SIGN.y, 0, SIGN.x, SIGN.y, 16); g.addColorStop(0, `rgba(255,46,136,${.35 * nt})`); g.addColorStop(1, "rgba(255,46,136,0)"); ctx.fillStyle = g; ctx.fillRect(SIGN.x - 16, SIGN.y - 16, 32, 32);
     ctx.globalCompositeOperation = "source-over"; }
   drawLights(nt); }

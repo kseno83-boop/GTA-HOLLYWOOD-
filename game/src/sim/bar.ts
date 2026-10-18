@@ -18,7 +18,8 @@ export const SLOTS: Slot[] = [];
 for (let y = 1.6; y < 8; y += 1) SLOTS.push({ x: 3.35, y, a: Math.PI, kind: "bancone", via: [[5.4, y], [3.35, y]] });
 for (const y of [3.55, 4.65, 5.75, 6.85]) { SLOTS.push({ x: 9.95, y, a: 0, kind: "tavolo", via: [[8.9, 8.5], [8.9, y], [9.95, y]] });
   SLOTS.push({ x: 12.85, y, a: Math.PI, kind: "tavolo", via: [[13.4, 8.5], [13.4, y], [12.85, y]] }); }
-const LINES = ["Uno spritz!", "Il solito, grazie", "Un Campari", "Ma va là!", "Domani si lavora...", "Ancora una birra", "Offro io stasera", "Qui si sta bene", "Sta zitto va'", "Un caffè corretto", "Chi fa il mister stasera?", "Ai miei tempi Van Basten..."];
+/** Chiacchiere generiche degli avventori (anche nel dehors). */
+export const LINES = ["Uno spritz!", "Il solito, grazie", "Un Campari", "Ma va là!", "Domani si lavora...", "Ancora una birra", "Offro io stasera", "Qui si sta bene", "Sta zitto va'", "Un caffè corretto", "Chi fa il mister stasera?", "Ai miei tempi Van Basten..."];
 
 export interface Guest extends Body {
   slot: Slot; team: string | null; cheer: number; t: number; st: "walk" | "sit" | "stand" | "order" | "out";

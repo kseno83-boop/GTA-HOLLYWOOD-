@@ -18,6 +18,8 @@ export interface Ped extends Body {
   cop?: boolean; keep?: boolean; gang?: string; hx?: number; hy?: number; mv?: boolean;
   /** Personaggio fisso (vedi src/characters). */
   npc?: string;
+  /** Cliente seduto nel dehors: angolo verso il tavolo e indice del posto. */
+  seat?: number; seatIdx?: number;
 }
 export type VehType = "car" | "ztl" | "police" | "ambulance" | "fire" | "truck" | "rider" | "maranza" | "scooter";
 export interface Vehicle {

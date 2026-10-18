@@ -52,8 +52,18 @@ function nearBuildings(x: number, y: number, r: number) { const out = new Set<Bu
   for (let gx = Math.floor((x - r) / CELL); gx <= Math.floor((x + r) / CELL); gx++) for (let gy = Math.floor((y - r) / CELL); gy <= Math.floor((y + r) / CELL); gy++)
     for (const b of grid.get(gx * 1000 + gy) || []) out.add(b); return out; }
 export function solidAt(x: number, y: number) { for (const b of nearBuildings(x, y, 0)) if (x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1 && inPoly(b, x, y)) return true; return false; }
-/** Spinge fuori dagli edifici (e dentro i bordi della mappa) un cerchio di raggio r. */
-export function pushOut(e: { x: number; y: number }, r: number) { let hit = false;
+/** Ostacoli rettangolari orientati oltre agli edifici (tavoli del dehors): centro, assi u e n, semi-lati. */
+export const solids: { x: number; y: number; ux: number; uy: number; nx: number; ny: number; hu: number; hn: number }[] = [];
+function pushSolids(e: { x: number; y: number }, r: number) { let hit = false;
+  for (const s of solids) { const rx = e.x - s.x, ry = e.y - s.y; if (Math.abs(rx) > 6 || Math.abs(ry) > 6) continue;
+    const a = rx * s.ux + ry * s.uy, b = rx * s.nx + ry * s.ny, ca = clamp(a, -s.hu, s.hu), cb = clamp(b, -s.hn, s.hn), d = hyp(a - ca, b - cb);
+    if (d >= r) continue; hit = true; let na: number, nb: number;
+    if (d > 0) { na = ca + (a - ca) / d * r; nb = cb + (b - cb) / d * r; }
+    else if (s.hu - Math.abs(a) < s.hn - Math.abs(b)) { na = (Math.sign(a) || 1) * (s.hu + r); nb = b; } else { na = a; nb = (Math.sign(b) || 1) * (s.hn + r); }
+    e.x = s.x + s.ux * na + s.nx * nb; e.y = s.y + s.uy * na + s.ny * nb; }
+  return hit; }
+/** Spinge fuori dagli edifici, dagli ostacoli e dentro i bordi della mappa un cerchio di raggio r. */
+export function pushOut(e: { x: number; y: number }, r: number) { let hit = pushSolids(e, r);
   for (const b of nearBuildings(e.x, e.y, r)) { if (e.x < b.x0 - r || e.x > b.x1 + r || e.y < b.y0 - r || e.y > b.y1 + r) continue;
     const ins = inPoly(b, e.x, e.y), [d, px, py] = nearestEdge(b, e.x, e.y);
     if (ins) { const ux = (px - e.x) / (d || 1), uy = (py - e.y) / (d || 1); e.x = px + ux * r; e.y = py + uy * r; hit = true; }

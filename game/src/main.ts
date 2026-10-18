@@ -14,6 +14,7 @@ import { StreetScene } from "./scenes/StreetScene";
 import { BarScene } from "./scenes/BarScene";
 import { HudScene } from "./scenes/HudScene";
 import { bindDom } from "./ui/dom";
+import { toWorld, TABLES } from "./world/dehors";
 
 if (TOUCH) document.documentElement.classList.add("touch");
 P.x = DOOR.x; P.y = DOOR.y; G.camX = P.x; G.camY = P.y;
@@ -37,6 +38,6 @@ async function boot() {
   });
   window.addEventListener("resize", () => { measure(); game.scale.setZoom(1 / G.dpr); game.scale.resize(Math.round(G.cw * G.dpr), Math.round(G.ch * G.dpr)); });
   // accesso per i test automatici (tools/smoke_test.js)
-  Object.assign(window, { __gta: { game, G, P, peds, cars, guests, VT, DOOR, F, scoreLine, PERSONAGGI, D } });
+  Object.assign(window, { __gta: { game, G, P, peds, cars, guests, VT, DOOR, F, scoreLine, PERSONAGGI, D, dehors: { toWorld, TABLES } } });
 }
 boot();

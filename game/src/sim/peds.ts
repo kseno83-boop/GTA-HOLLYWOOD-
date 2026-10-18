@@ -3,6 +3,7 @@ import { G, P, peds, blood, look, activity, say, viewHalf, type Ped, type Look }
 import { R, clamp, pick, hyp, angDiff } from "../core/util";
 import { NX, NY, adj, pushOut, nearestNode, DOOR, PLACES } from "../world/map";
 import { sfx } from "../audio/sfx";
+import { LINES } from "./bar";
 
 /** Livelli di ricercato: Polizia Locale → Polizia di Stato → Carabinieri → Carabinieri+Polizia → reparti speciali. */
 export const LEVELS = ["", "POLIZIA LOCALE", "POLIZIA DI STATO", "CARABINIERI", "CARABINIERI + POLIZIA", "REPARTI SPECIALI"];
@@ -62,12 +63,13 @@ export function updPeds(dt: number) {
     else if (p.st === "flee") { p.t -= dt; const d = hyp(p.x - P.x, p.y - P.y) || 1; tx = p.x + (p.x - P.x) / d * 5 + R(-1, 1); ty = p.y + (p.y - P.y) / d * 5 + R(-1, 1);
       if (p.t <= 0) { p.st = p.keep ? "loiter" : "walk"; p.spd = R(1.1, 1.6); } }
     else if (p.st === "loiter") { p.mv = hyp(p.hx! - p.x, p.hy! - p.y) > .4;
-      if (p.mv) { tx = p.hx!; ty = p.hy!; } else { const dp = hyp(P.x - p.x, P.y - p.y);
+      if (p.mv) { tx = p.hx!; ty = p.hy!; } else if (p.seat !== undefined) { p.x = p.hx!; p.y = p.hy!; p.a += angDiff(p.a, p.seat) * Math.min(1, dt * 6);
+        if (!(p.bubT > 0) && Math.random() < dt / 14) { p.bub = pick(LINES); p.bubT = 2.2; } continue; } else { const dp = hyp(P.x - p.x, P.y - p.y);
         if (dp < 9 && G.scene === "out" && !p.npc) { p.a += angDiff(p.a, Math.atan2(P.y - p.y, P.x - p.x)) * Math.min(1, dt * 6); if (!(p.bubT > 0) && Math.random() < dt * .35) { p.bub = pick(["Che vuoi?", "Questo è territorio nostro", "Torna all'Hollywood", "Occhio a te", "Sparisci"]); p.bubT = 2.2; } }
         continue; } }
     else if (p.st === "idle") { p.t -= dt; if (p.t <= 0) p.st = "walk"; continue; }
     else { [tx, ty] = pedTarget(p); if (hyp(tx - p.x, ty - p.y) < .5) { const opts = adj[p.next].filter(e => e.n !== p.prev), e = pick(opts.length ? opts : adj[p.next]);
         p.prev = p.next; p.next = e.n; p.road = e.r; if (Math.random() < .08) { p.st = "idle"; p.t = R(2, 6); if (Math.random() < .3) { p.bub = pick(["Che freddo stasera", "Ciao bella!", "Stasera gioca il Milan?", "Andiamo all'Hollywood?", "Uff, il parcheggio..."]); p.bubT = 2.4; } } continue; } }
     const dx = tx - p.x, dy = ty - p.y, d = hyp(dx, dy) || 1, ox = p.x, oy = p.y;
-    p.x += dx / d * sp * dt; p.y += dy / d * sp * dt; p.a += angDiff(p.a, Math.atan2(dy, dx)) * Math.min(1, dt * 10); p.anim += sp * dt * 4.5; pushOut(p, .32);
+    p.x += dx / d * sp * dt; p.y += dy / d * sp * dt; p.a += angDiff(p.a, Math.atan2(dy, dx)) * Math.min(1, dt * 10); p.anim += sp * dt * 4.5; if (p.seat === undefined || p.st !== "loiter") pushOut(p, .32);
     p.stuck = hyp(p.x - ox, p.y - oy) < sp * dt * .3 ? p.stuck + dt : 0; if (p.stuck > 4 && p.st === "walk" && !p.keep) { peds.splice(i, 1); } } }

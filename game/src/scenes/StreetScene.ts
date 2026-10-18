@@ -7,6 +7,7 @@ import { updPlayer, updBullets } from "../sim/player";
 import { updPeds } from "../sim/peds";
 import { updVeh } from "../sim/traffic";
 import { updStreetNpcs } from "../characters/runtime";
+import { updDehors } from "../sim/dehors";
 import { drawOut } from "../render/street";
 import { B2S } from "../render/view";
 import { WorldScene } from "./WorldScene";
@@ -31,7 +32,7 @@ export class StreetScene extends WorldScene {
   }
   protected simulate(dt: number) {
     if (G.started) { updPlayer(dt); updBullets(dt); }
-    updPeds(G.started ? dt : .016); updVeh(G.started ? dt : .016); updStreetNpcs(dt);
+    updPeds(G.started ? dt : .016); updVeh(G.started ? dt : .016); updDehors(G.started ? dt : .016); updStreetNpcs(dt);
     const { cw, ch } = G, z = clamp(Math.max(cw, ch) / 1100, .9, 1.15), tS = (P.car ? clamp(17 - Math.abs(P.car.v) * .4, 8.5, 17) : 26) * z;
     G.S += (tS - G.S) * Math.min(1, dt * 2);
     let lx = 0, ly = 0;

@@ -77,7 +77,7 @@ export function drawLights(nt: number) { const ctx = V.ctx; ctx.globalCompositeO
       g.addColorStop(0, `rgba(255,240,190,${.35 * nt})`); g.addColorStop(1, "rgba(255,240,190,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, -.6); ctx.lineTo(11, -4.5); ctx.lineTo(11, 4.5); ctx.lineTo(0, .6); ctx.fill(); ctx.restore(); continue; }
     const r = l.r!, g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, r); g.addColorStop(0, `rgba(${l.k},${.25 + .35 * nt})`); g.addColorStop(1, `rgba(${l.k},0)`); ctx.fillStyle = g; ctx.fillRect(l.x - r, l.y - r, r * 2, r * 2); }
   ctx.globalCompositeOperation = "source-over"; }
-export function pedPose(p: Ped): Pose { return p.st === "dead" ? "dead" : p.st === "idle" || (p.st === "loiter" && !p.mv) ? "idle" : p.st === "flee" || p.st === "chase" ? "run" : "walk"; }
+export function pedPose(p: Ped): Pose { return p.st === "dead" ? "dead" : p.st === "loiter" && !p.mv && p.seat !== undefined ? "sit" : p.st === "idle" || (p.st === "loiter" && !p.mv) ? "idle" : p.st === "flee" || p.st === "chase" ? "run" : "walk"; }
 export function drawFx() { const ctx = V.ctx;
   for (const b of blood) { ctx.fillStyle = b.pool ? "#5c0711" : "#7d0b17"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill();
     if (b.pool) { ctx.fillStyle = "#9c1022"; ctx.beginPath(); ctx.arc(b.x - b.r * .25, b.y - b.r * .25, b.r * .45, 0, 7); ctx.fill(); } }

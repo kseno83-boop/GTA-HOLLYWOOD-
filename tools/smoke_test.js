@@ -21,6 +21,11 @@ const out = process.argv[2] || ".";
   const street = await p.evaluate(() => { const { game, peds, cars, VT } = window.__gta;
     return { renderer: game.renderer.type === 2 ? "WebGL" : "Canvas", fps: Math.round(game.loop.actualFps), peds: peds.length, traffic: cars.filter(c => c.ai).length,
       wrongWay: cars.filter(v => v.ai && !VT[v.type].bike && !v.siren && v.kind !== "wrong" && v.road && v.road.oneway && v.road.ids.indexOf(v.next) !== v.road.ids.indexOf(v.prev) + 1).length }; });
+  // dehors dell'Hollywood: clienti seduti e tavoli solidi
+  const dehors = await p.evaluate(() => { const { peds, P, dehors } = window.__gta, t = dehors.TABLES[1], c = dehors.toWorld(t.u, t.n);
+    P.x = c.x; P.y = c.y; return { seated: peds.filter(p => p.seat !== undefined).length }; });
+  await minutes(1);
+  dehors.pushedOffTable = await p.evaluate(() => { const { P, dehors } = window.__gta, t = dehors.TABLES[1], c = dehors.toWorld(t.u, t.n); return Math.hypot(P.x - c.x, P.y - c.y) > .5; });
   // personaggi di prova: uno al bancone, uno davanti al Maramao
   await p.evaluate(() => window.__gta.PERSONAGGI.push(
     { id: "prova", nome: "Personaggio di prova", posto: "bancone", aspetto: { shirt: "#ffd166" }, squadra: "MILAN",
@@ -45,8 +50,8 @@ const out = process.argv[2] || ".";
   // esci e trova il personaggio in strada
   await p.evaluate(() => { const { P } = window.__gta; P.y = 11; }); await minutes(1);
   const npcOut = await p.evaluate(() => { const { peds, G } = window.__gta, n = peds.find(p => p.npc === "fuori"); return { scene: G.scene, spawned: !!n }; });
-  console.log(JSON.stringify({ street, bar, dialog, npcOut, errs }, null, 1));
-  const ok = !errs.length && street.wrongWay === 0 && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned;
+  console.log(JSON.stringify({ street, dehors, bar, dialog, npcOut, errs }, null, 1));
+  const ok = !errs.length && street.wrongWay === 0 && dehors.seated > 0 && dehors.pushedOffTable && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned;
   console.log(ok ? "OK" : "FALLITO");
   await b.close(); process.exit(ok ? 0 : 1);
 })();
