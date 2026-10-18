@@ -1,20 +1,52 @@
-// Test rapido della demo: avvia il gioco in Chromium headless, controlla errori, traffico,
-// sensi unici e bar, salva screenshot. Uso: node tools/smoke_test.js [cartella_output]
+// Test rapido del gioco Phaser (game/dist/index.html, prima: cd game && npm run build).
+// Avvia Chromium headless, controlla errori, renderer, traffico e sensi unici, Hollywood e partita,
+// e il sistema dei personaggi con personaggi di prova (aggiunti solo qui, non nel gioco). Salva screenshot.
+// Le attese sono in tempo di gioco: senza GPU il gioco può girare lento.
+// Uso: node tools/smoke_test.js [cartella_output]
 const path = require("path");
 const { chromium } = require("playwright");
 const out = process.argv[2] || ".";
 (async () => {
-  const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+  const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox", "--enable-unsafe-swiftshader"] });
   const p = await b.newPage({ viewport: { width: 1280, height: 760 } });
-  const errs = []; p.on("pageerror", e => errs.push(e.message));
-  await p.goto("file://" + path.resolve(__dirname, "../demo/index.html")); await p.waitForTimeout(800);
-  await p.click("#play"); await p.waitForTimeout(5000);
+  const errs = []; p.on("pageerror", e => errs.push(e.message)); p.on("console", m => { if (m.type() === "error") errs.push(m.text()); });
+  const until = (fn, arg, timeout = 30000) => p.waitForFunction(fn, arg, { timeout, polling: 100 });
+  /** aspetta che passino m minuti di gioco */
+  const minutes = async m => { const h0 = await p.evaluate(() => window.__gta.G.hour); await until(([h0, m]) => (window.__gta.G.hour - h0 + 24) % 24 >= m / 60, [h0, m]); };
+  const key = async k => { await p.keyboard.press(k); await p.waitForTimeout(250); };
+  await p.goto("file://" + path.resolve(__dirname, "../game/dist/index.html"));
+  await until(() => window.__gta && window.__gta.game.isBooted, null, 15000);
+  await p.waitForTimeout(600); await p.click("#play"); await minutes(4);
   await p.screenshot({ path: path.join(out, "esterno.png") });
-  const out1 = await p.evaluate(() => ({ peds: peds.length, traffic: cars.filter(c => c.ai).length,
-    wrongWay: cars.filter(v => v.ai && !VT[v.type].bike && !v.siren && v.kind !== "wrong" && v.road && v.road.oneway && v.road.ids.indexOf(v.next) !== v.road.ids.indexOf(v.prev) + 1).length }));
-  await p.evaluate(() => { P.x = DOOR.x; P.y = DOOR.y; hour = 20.7; }); await p.keyboard.press("KeyE"); await p.waitForTimeout(4000);
-  const out2 = await p.evaluate(() => ({ scene, guests: guests.length, match: match && scoreLine() }));
+  const street = await p.evaluate(() => { const { game, peds, cars, VT } = window.__gta;
+    return { renderer: game.renderer.type === 2 ? "WebGL" : "Canvas", fps: Math.round(game.loop.actualFps), peds: peds.length, traffic: cars.filter(c => c.ai).length,
+      wrongWay: cars.filter(v => v.ai && !VT[v.type].bike && !v.siren && v.kind !== "wrong" && v.road && v.road.oneway && v.road.ids.indexOf(v.next) !== v.road.ids.indexOf(v.prev) + 1).length }; });
+  // personaggi di prova: uno al bancone, uno davanti al Maramao
+  await p.evaluate(() => window.__gta.PERSONAGGI.push(
+    { id: "prova", nome: "Personaggio di prova", posto: "bancone", aspetto: { shirt: "#ffd166" }, squadra: "MILAN",
+      dialogo: ["Prima battuta di prova, abbastanza lunga per andare a capo nel riquadro del dialogo.", "Seconda battuta."] },
+    { id: "fuori", nome: "Prova in strada", posto: { fuori: "BAR MARAMAO" }, dialogo: ["Ciao."], frasi: ["Frase di prova"] }));
+  // Hollywood alle 20:42: la partita delle 20:45 inizia mentre sei dentro
+  await p.evaluate(() => { const { P, DOOR, G } = window.__gta; P.x = DOOR.x; P.y = DOOR.y; G.hour = 20.7; }); await key("KeyE");
+  await minutes(6);
+  const bar = await p.evaluate(() => { const { G, guests, F, scoreLine, game } = window.__gta;
+    return { scene: G.scene, activeScenes: game.scene.getScenes(true).map(s => s.scene.key), guests: guests.length, match: F.match && scoreLine(F.match), npcInBar: guests.some(g => g.npc === "prova") }; });
   await p.screenshot({ path: path.join(out, "hollywood.png") });
-  console.log(JSON.stringify({ ...out1, ...out2, errs }, null, 1));
-  await b.close(); process.exit(errs.length ? 1 : 0);
+  // parla con il personaggio al bancone
+  await p.evaluate(() => { const { guests, P } = window.__gta, g = guests.find(g => g.npc === "prova"); P.x = g.x + 1.3; P.y = g.y; });
+  await key("KeyE"); await p.waitForTimeout(800);
+  await p.screenshot({ path: path.join(out, "dialogo.png") });
+  const d1 = await p.evaluate(() => ({ ...window.__gta.D }));
+  await key("KeyE"); await key("KeyE");
+  const d2 = await p.evaluate(() => ({ ...window.__gta.D }));
+  await key("KeyE"); await key("KeyE");
+  const d3 = await p.evaluate(() => ({ ...window.__gta.D }));
+  const dialog = { opened: d1.id === "prova", second: d2.text === "Seconda battuta.", closedAtEnd: d3.id === "" };
+  // esci e trova il personaggio in strada
+  await p.evaluate(() => { const { P } = window.__gta; P.y = 11; }); await minutes(1);
+  const npcOut = await p.evaluate(() => { const { peds, G } = window.__gta, n = peds.find(p => p.npc === "fuori"); return { scene: G.scene, spawned: !!n }; });
+  console.log(JSON.stringify({ street, bar, dialog, npcOut, errs }, null, 1));
+  const ok = !errs.length && street.wrongWay === 0 && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned;
+  console.log(ok ? "OK" : "FALLITO");
+  await b.close(); process.exit(ok ? 0 : 1);
 })();

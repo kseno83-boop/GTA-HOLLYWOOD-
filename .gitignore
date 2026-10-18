@@ -4,3 +4,5 @@ node_modules/
 dist/
 demo/music/*
 !demo/music/playlist.js
+game/public/music/*
+!game/public/music/playlist.js

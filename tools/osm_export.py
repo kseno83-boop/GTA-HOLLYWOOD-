@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Esporta i dati OSM del centro di Legnano in demo/map-data.js per la demo giocabile.
+"""Esporta i dati OSM del centro di Legnano per il gioco.
 
-Uso: python3 tools/osm_export.py [file.osm] [output.js]
+Uso: python3 tools/osm_export.py [file.osm] [output]
+  output .json (predefinito game/src/data/map.json) = gioco Phaser; output .js (demo/map-data.js) = vecchia demo.
 Coordinate in decimetri, origine nell'angolo nord-ovest dell'area di gioco, y verso sud.
 Dati (c) OpenStreetMap contributors, licenza ODbL.
 """
@@ -26,7 +27,7 @@ PLACES = [("938876437", "BAR MARAMAO", "rival"), ("5875318295", "BAR MORELLO", "
 
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else "centro.osm"
-    out = sys.argv[2] if len(sys.argv) > 2 else "demo/map-data.js"
+    out = sys.argv[2] if len(sys.argv) > 2 else "game/src/data/map.json"
     root = load(src)
     min_lon, min_lat, max_lon, max_lat = PLAY_BBOX
     lat0 = (min_lat + max_lat) / 2
@@ -131,8 +132,11 @@ def main():
             "buildings": buildings, "green": green, "water": water, "rivers": rivers, "rails": rails,
             "pois": pois, "places": places, "bar": [dm(hx), dm(hy)], "door": [dm(best[1]), dm(best[2])]}
     with open(out, "w", encoding="utf-8") as f:
-        f.write("// Generato da tools/osm_export.py. Dati (c) OpenStreetMap contributors, ODbL.\n")
-        f.write("window.MAP=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n")
+        if out.endswith(".json"):  # per il gioco Phaser (game/src/data/map.json): JSON puro, importato dal codice
+            f.write(json.dumps(data, separators=(",", ":"), ensure_ascii=False) + "\n")
+        else:  # per la vecchia demo (demo/map-data.js)
+            f.write("// Generato da tools/osm_export.py. Dati (c) OpenStreetMap contributors, ODbL.\n")
+            f.write("window.MAP=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n")
     print("ZTL:", ", ".join(sorted(ztl_names)))
     print("Sensi unici:", len(oneway_names), "vie, tra cui Corso Magenta:", "Corso Magenta" in oneway_names)
     print("Scritto %s: %d edifici, %d strade, %d nodi, porta a %.1f m dal nodo del bar"

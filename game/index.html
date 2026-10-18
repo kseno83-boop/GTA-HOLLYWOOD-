@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GTA Hollywood</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=VT323&display=swap">
+<style>
+/* Layout: canvas di Phaser a tutto schermo, HUD come oggetti Phaser, pannello iniziale sovrapposto. Look neon anni '80, tema unico scuro. */
+:root {
+  --bg: #120b1c; --ink: #fff3fb; --dim: #b9a3c9; --neon: #ff2e88; --cyan: #29f2e4; --panel: rgba(22,10,34,.9);
+  --display: "Bungee", "Impact", "Arial Black", sans-serif; --mono: "VT323", "Courier New", monospace;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; background: var(--bg); color: var(--ink); overflow: hidden; touch-action: none; }
+#game { position: fixed; inset: 0; }
+#game canvas { display: block; }
+#intro { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, rgba(255,46,136,.25), rgba(8,4,14,.8));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px; }
+#intro .card { max-width: 31rem; background: var(--panel); border: 3px solid var(--neon); box-shadow: 6px 6px 0 var(--cyan), 0 0 30px rgba(255,46,136,.5);
+  padding: 1.4rem 1.6rem; display: grid; gap: .8rem; font-family: var(--mono); font-size: 1.3rem; line-height: 1.15; transform: rotate(-1.2deg); }
+#intro h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(2rem, 8vw, 3.2rem); color: var(--neon); line-height: .95;
+  text-shadow: 3px 0 0 var(--cyan), -3px 0 0 #ffe14d; text-wrap: balance; animation: wob 2.4s ease-in-out infinite; }
+@keyframes wob { 50% { transform: rotate(2deg) scale(1.03); } }
+@media (prefers-reduced-motion: reduce) { #intro h1 { animation: none; } }
+#intro .sub { color: var(--cyan); letter-spacing: .1em; text-transform: uppercase; font-size: 1.1rem; }
+#intro dl { display: grid; grid-template-columns: auto 1fr; gap: .15rem .9rem; margin: 0; }
+#intro dt { color: var(--cyan); } #intro dd { margin: 0; color: var(--ink); }
+#intro p { margin: 0; color: var(--dim); }
+#play { font-family: var(--display); font-size: 1.4rem; background: var(--neon); color: #1a0710; border: 0; padding: .7rem 1rem; cursor: pointer; box-shadow: 4px 4px 0 var(--cyan); }
+#play:focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
+#intro .touch-only { display: none; } .touch #intro .touch-only { display: grid; } .touch #intro .desk-only { display: none; }
+#pad { position: fixed; right: calc(14px + env(safe-area-inset-right, 0px)); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display: none; gap: 12px; }
+.touch #pad.on { display: flex; }
+#pad button { width: 74px; height: 74px; border-radius: 50%; border: 3px solid var(--cyan); background: rgba(22,10,34,.6);
+  color: var(--ink); font-family: var(--display); font-size: .8rem; }
+#pad button:active { background: rgba(41,242,228,.35); }
+#mute { position: fixed; left: calc(14px + env(safe-area-inset-left, 0px)); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); font-family: var(--mono); font-size: 1.1rem;
+  background: rgba(22,10,34,.75); color: var(--cyan); border: 2px solid var(--cyan); padding: .2rem .6rem; cursor: pointer; }
+.touch #mute { bottom: auto; top: calc(132px + env(safe-area-inset-top, 0px)); }
+#mute:focus-visible, #tracks:focus-visible + label { outline: 3px solid var(--cyan); }
+#intro .load { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; color: var(--dim); }
+#intro .load label { border: 2px dashed var(--cyan); color: var(--cyan); padding: .2rem .6rem; cursor: pointer; }
+#tracks { position: absolute; opacity: 0; width: 1px; height: 1px; }
+</style>
+
+</head>
+<body>
+<div id="game"></div>
+<div id="pad"><button id="bFire" type="button">SPARA</button><button id="bAct" type="button">AZIONE</button></div>
+<button id="mute" type="button" hidden>AUDIO SÌ</button>
+<div id="intro"><div class="card">
+  <div class="sub">Legnano · Corso Magenta 44</div>
+  <h1>GTA Hollywood</h1>
+  <p>Demo tecnica: il centro di Legnano ricostruito da OpenStreetMap, con l'isola pedonale di Corso Magenta. Rivali al Maramao e al Morello, si mangia da Stuzzi Sushi e al Gran Prix. Stasera alle 20:45 c'è Milan-Inter al maxischermo dell'Hollywood. Sono le 18:30.</p>
+  <dl class="desk-only">
+    <dt>WASD</dt><dd>muoviti (Shift corre) · in auto W/S gas, A/D sterza, Spazio freno a mano</dd>
+    <dt>Mouse</dt><dd>mira e spara</dd>
+    <dt>E</dt><dd>entra/esci dall'auto o dall'Hollywood, parla con i personaggi</dd>
+    <dt>T</dt><dd>avanti di un'ora</dd>
+    <dt>M · N</dt><dd>audio sì/no · brano successivo</dd>
+    <dt>F</dt><dd>mostra gli FPS</dd>
+  </dl>
+  <dl class="touch-only">
+    <dt>Sinistra</dt><dd>trascina per muoverti o guidare</dd>
+    <dt>Pulsanti</dt><dd>SPARA e AZIONE (auto, Hollywood)</dd>
+  </dl>
+  <div class="load"><input id="tracks" type="file" accept="audio/*" multiple><label for="tracks">Carica i tuoi brani</label><span id="tcount">colonna sonora: nessun brano</span></div>
+  <button id="play" type="button">Gioca</button>
+  <p>Dati mappa © OpenStreetMap contributors (ODbL).</p>
+</div></div>
+
+<script src="music/playlist.js"></script>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
