@@ -41,7 +41,8 @@ export abstract class WorldScene extends Phaser.Scene {
     const LW = Math.ceil(cw / V.PX) + 2, LH = Math.ceil(ch / V.PX) + 2, tex = this.textures.get(WORLD_TEX) as Phaser.Textures.CanvasTexture;
     if (tex.width !== LW || tex.height !== LH) { tex.setSize(LW, LH); this.img.setSizeToFrame(); }
     V.LW = LW; V.LH = LH; V.ctx = tex.getContext(); V.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    this.draw(); grade(); tex.refresh();
+    // refresh() ricrea la texture con il filtro di default (morbido, perché antialias è attivo per i testi): pixel netti di nuovo
+    this.draw(); grade(); tex.refresh(); tex.setFilter(Phaser.Textures.FilterMode.NEAREST);
     // oscillazione della camera e scossoni
     G.shake = Math.max(0, G.shake - dt); const sx = G.shake ? R(-1, 1) * G.shake * 14 : 0, sy = G.shake ? R(-1, 1) * G.shake * 14 : 0, sway = Math.sin(time / 1700) * .012 + Math.sin(time / 4100) * .008;
     this.layer.setPosition(cw / 2 + sx, ch / 2 + sy).setRotation(sway).setScale(1.04);

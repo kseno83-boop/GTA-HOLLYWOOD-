@@ -58,7 +58,7 @@ const out = process.argv[2] || ".";
   const d3 = await p.evaluate(() => ({ ...window.__gta.D }));
   const dialog = { opened: d1.id === "prova", second: d2.text === "Seconda battuta.", closedAtEnd: d3.id === "" };
   // esci e trova il personaggio in strada
-  await p.evaluate(() => { const { P } = window.__gta; P.y = 11; }); await minutes(1);
+  await p.evaluate(() => { const { P } = window.__gta; P.x = 4.2; P.y = 19.6; }); await minutes(1);
   const npcOut = await p.evaluate(() => { const { peds, G } = window.__gta, n = peds.find(p => p.npc === "fuori"); return { scene: G.scene, spawned: !!n }; });
   console.log(JSON.stringify({ street, dehors, bar, dialog, npcOut, errs }, null, 1));
   const ok = !errs.length && street.wrongWay === 0 && dehors.seated > 0 && dehors.pushedOffTable && dehors.traffic.cars === 0 && dehors.traffic.passed > 0 && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned;
