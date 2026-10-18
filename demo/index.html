@@ -47,7 +47,7 @@ canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; i
 <div id="intro"><div class="card">
   <div class="sub">Legnano · Corso Magenta 44</div>
   <h1>GTA Hollywood</h1>
-  <p>Demo tecnica: il centro di Legnano ricostruito da OpenStreetMap. Rivali al Maramao e al Morello, si mangia da Stuzzi Sushi e al Gran Prix. Stasera alle 20:45 c'è Milan-Inter al maxischermo dell'Hollywood. Sono le 18:30.</p>
+  <p>Demo tecnica: il centro di Legnano ricostruito da OpenStreetMap, con l'isola pedonale di Corso Magenta. Rivali al Maramao e al Morello, si mangia da Stuzzi Sushi e al Gran Prix. Stasera alle 20:45 c'è Milan-Inter al maxischermo dell'Hollywood. Sono le 18:30.</p>
   <dl class="desk-only">
     <dt>WASD</dt><dd>muoviti (Shift corre) · in auto W/S gas, A/D sterza, Spazio freno a mano</dd>
     <dt>Mouse</dt><dd>mira e spara</dd>
@@ -79,12 +79,12 @@ const K = "#0b0612";
 
 // ---------- Mappa ----------
 const NX = M.nodes.filter((_, i) => i % 2 === 0).map(v => v / 10), NY = M.nodes.filter((_, i) => i % 2).map(v => v / 10);
-const RW = { primary: 11, secondary: 10, tertiary: 8.5, unclassified: 7, residential: 6.5, living_street: 5, service: 4, pedestrian: 7, footway: 2.2, cycleway: 2.2, steps: 2.2, path: 1.6 };
+const RW = { primary: 11, secondary: 10, tertiary: 8.5, unclassified: 7, residential: 6.5, living_street: 5, service: 4, pedestrian: 7, footway: 2.2, cycleway: 2.2, steps: 2.2, path: 1.6, ztl: 7 };
 const CARRO = new Set(["primary", "secondary", "tertiary", "unclassified", "residential", "living_street", "service"]);
 const adj = NX.map(() => []);
 const roads = M.roads.map(r => {
   const t = M.types[r[0]], ids = r.slice(2), xs = ids.map(i => NX[i]), ys = ids.map(i => NY[i]);
-  const road = { t, w: RW[t], car: CARRO.has(t), name: r[1] >= 0 ? M.names[r[1]] : null, ids,
+  const road = { t, w: RW[t], car: CARRO.has(t), ztl: t === "ztl", name: r[1] >= 0 ? M.names[r[1]] : null, ids,
     x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
   for (let i = 0; i < ids.length - 1; i++) { adj[ids[i]].push({ n: ids[i + 1], r: road }); adj[ids[i + 1]].push({ n: ids[i], r: road }); }
   return road;
@@ -159,8 +159,8 @@ const look = (o = {}) => Object.assign({ shirt: pick(SHIRTS), pants: pick(PANTS)
 // auto parcheggiate lungo le strade carrabili
 for (const r of roads) { if (!r.car || r.t === "service" || r.t === "primary") continue;
   for (let i = 0; i < r.ids.length - 1; i++) { const a = r.ids[i], b = r.ids[i + 1], L = hyp(NX[b] - NX[a], NY[b] - NY[a]), an = Math.atan2(NY[b] - NY[a], NX[b] - NX[a]);
-    for (let s = 6; s < L - 6; s += 14) { if (rnd() > .13) continue; const side = rnd() < .5 ? 1 : -1, off = r.w / 2 - 1.1, k = s / L;
-      const c = { x: NX[a] + (NX[b] - NX[a]) * k - Math.sin(an) * off * side, y: NY[a] + (NY[b] - NY[a]) * k + Math.cos(an) * off * side, a: an + (rnd() < .5 ? 0 : Math.PI), v: 0, col: CARCOL[Math.floor(rnd() * CARCOL.length)] };
+    for (let s = 6; s < L - 6; s += 14) { if (rnd() > .13) continue; const side = rnd() < .5 ? 1 : -1, off = r.w / 2 + .3, k = s / L;
+      const c = { type: "car", x: NX[a] + (NX[b] - NX[a]) * k - Math.sin(an) * off * side, y: NY[a] + (NY[b] - NY[a]) * k + Math.cos(an) * off * side, a: an + (rnd() < .5 ? 0 : Math.PI), v: 0, col: CARCOL[Math.floor(rnd() * CARCOL.length)] };
       const fx = Math.cos(c.a) * 2.3, fy = Math.sin(c.a) * 2.3, sx = -fy * .45, sy = fx * .45;
       if (![[0, 0], [fx + sx, fy + sy], [fx - sx, fy - sy], [-fx + sx, -fy + sy], [-fx - sx, -fy - sy]].some(([u, v]) => solidAt(c.x + u, c.y + v)) && !cars.some(o => hyp(o.x - c.x, o.y - c.y) < 6)) cars.push(c); } } }
 
@@ -242,7 +242,7 @@ function updPeds(dt) {
   const [hw, hh] = viewHalf(), want = Math.round((22 + 40 * activity(hour)) * Math.min(1.4, (hw * hh) / 4000 + .5)), cops = Math.min(10, Math.ceil(heat) * 2);
   let nc = 0, np = 0; for (const p of peds) if (p.st !== "dead" && !p.keep) p.cop ? nc++ : np++;
   if (np < want) spawnPed(false, !started); if (nc < cops) spawnPed(true, false);
-  for (let i = peds.length - 1; i >= 0; i--) { const p = peds[i];
+  for (let i = peds.length - 1; i >= 0; i--) { const p = peds[i]; if (!p) continue;
     if (!p.keep && (Math.abs(p.x - P.x) > hw + 75 || Math.abs(p.y - P.y) > hh + 75 || (p.cop && heat === 0 && Math.abs(p.x - P.x) > hw))) { peds.splice(i, 1); continue; }
     if (p.bubT > 0) p.bubT -= dt; if (p.st === "dead") continue;
     let tx, ty, sp = p.spd;
@@ -264,6 +264,90 @@ function updPeds(dt) {
     p.stuck = hyp(p.x - ox, p.y - oy) < sp * dt * .3 ? p.stuck + dt : 0; if (p.stuck > 4 && p.st === "walk" && !p.keep) { peds.splice(i, 1); } } }
 function busted() { say("ARRESTATO!", 3); sfx.whistle(2); heat = 0; P.bust = 0; if (P.car) { P.car.v = 0; P.car = null; } P.x = DOOR.x; P.y = DOOR.y; for (let i = peds.length - 1; i >= 0; i--) if (peds[i].cop) peds.splice(i, 1); }
 
+// ---------- Traffico ----------
+const VT = { car: { L: 4.3, W: 1.9, cruise: 10, max: 32, acc: 12 }, ztl: { L: 4.3, W: 1.9, cruise: 4.5, max: 30, acc: 11 }, police: { L: 4.6, W: 1.95, cruise: 8, max: 34, acc: 13 },
+  ambulance: { L: 5.8, W: 2.2, cruise: 11, max: 28, acc: 9 }, fire: { L: 8.5, W: 2.5, cruise: 9, max: 24, acc: 7 }, truck: { L: 13, W: 2.6, cruise: 4, max: 20, acc: 5 },
+  rider: { L: 1.8, W: .6, cruise: 7, max: 12, acc: 8, bike: true }, maranza: { L: 1.8, W: .6, cruise: 8.5, max: 14, acc: 10, bike: true }, scooter: { L: 1.1, W: .5, cruise: 7.5, max: 11, acc: 9, bike: true } };
+const STEAL = { car: "ruba l'auto", ztl: "ruba l'auto", police: "ruba la volante", ambulance: "ruba l'ambulanza", fire: "ruba il camion dei pompieri", truck: "ruba il camion", rider: "ruba la bici", maranza: "ruba la bici", scooter: "ruba il monopattino" };
+const INSULTS = ["Vai piano, pirla!", "Scendi da quella bici!", "Ma va' a lavurà!", "Siamo in centro, deficiente!", "Rallenta!", "Ma guarda questo...", "Ti sei bevuto il cervello?", "Prima o poi ti stendi!"];
+const DRIVER = { car: ["Spostati!", "Oh! Ti muovi?", "Pirla!", "Ma dove vai?"], ztl: ["Ho il permesso, eh!", "Permesso, permesso..."], truck: ["Ma dove sono finito?!", "Navigatore maledetto!", "Qui non ci passo..."] };
+const useRoad = (permit, r) => r.car || (permit && (r.ztl || r.t === "pedestrian"));
+let evT = R(60, 150), LIGHTS = [];
+function nearestNode(x, y) { let b = 0, bd = 1e9; for (let i = 0; i < NX.length; i++) { const d = (NX[i] - x) ** 2 + (NY[i] - y) ** 2; if (d < bd && adj[i].length) { bd = d; b = i; } } return b; }
+function snap(o) { const n = nearestNode(o.x, o.y), e = pick(adj[n]); o.prev = n; o.next = e.n; o.road = e.r; return o; }
+function makePed(x, y, extra) { const p = snap(look(Object.assign({ x, y, a: 0, side: Math.random() < .5 ? 1 : -1, j: R(-.7, .7), spd: R(1.1, 1.6), st: "walk", t: 0, stuck: 0, bub: "", bubT: 0 }, extra))); peds.push(p); return p; }
+function boxLocal(e, c) { const ca = Math.cos(c.a), sa = Math.sin(c.a), rx = e.x - c.x, ry = e.y - c.y; return [rx * ca + ry * sa, -rx * sa + ry * ca, ca, sa]; }
+function boxDist(e, c) { const T = VT[c.type], [f, l] = boxLocal(e, c); return hyp(Math.max(0, Math.abs(f) - T.L / 2), Math.max(0, Math.abs(l) - T.W / 2)); }
+function boxPush(e, c, pad) { const T = VT[c.type], [f, l, ca, sa] = boxLocal(e, c), hl = T.L / 2 + pad, hw = T.W / 2 + pad;
+  if (Math.abs(f) >= hl || Math.abs(l) >= hw) return false; const pf = hl - Math.abs(f), pl = hw - Math.abs(l);
+  if (pf < pl) { const s = Math.sign(f) || 1; e.x += ca * pf * s; e.y += sa * pf * s; } else { const s = Math.sign(l) || 1; e.x -= sa * pl * s; e.y += ca * pl * s; } return true; }
+function nearVeh() { let best = 1.4, c = null; for (const o of cars) { if (Math.abs(o.x - P.x) > 10 || Math.abs(o.y - P.y) > 10) continue; const d = boxDist(P, o); if (d < best) { best = d; c = o; } } return c; }
+function insultNear(x, y, lines = INSULTS) { let best = 11, who = null; for (const p of peds) { if (p.st === "dead" || p.cop || p.bubT > 0) continue; const d = hyp(p.x - x, p.y - y); if (d < best) { best = d; who = p; } }
+  if (who) { who.bub = pick(lines); who.bubT = 2.4; if (who.st === "walk" || who.st === "idle") who.a = Math.atan2(y - who.y, x - who.x); } }
+function crashBike(v) { v.ai = false; v.v = 0; v.wheelie = 0; if (v.rider) makePed(v.x + 1, v.y, Object.assign({}, v.rider, { st: "flee", t: 5, spd: 5, bub: "Ma sei fuori?!", bubT: 2.5 })); v.rider = null; crime(.3); }
+function spawnVeh(type, o = {}, anywhere = false) {
+  const T = VT[type], [hw, hh] = viewHalf(), permit = o.permit ?? type !== "car";
+  const cand = []; for (let i = 0; i < NX.length; i++) { const dx = Math.abs(NX[i] - P.x), dy = Math.abs(NY[i] - P.y); if (dx < hw + 60 && dy < hh + 60 && (anywhere || dx > hw + 6 || dy > hh + 6)) cand.push(i); }
+  for (let k = 0; k < 20 && cand.length; k++) { const n = pick(cand);
+    let opts = adj[n].filter(e => useRoad(permit, e.r)); if (o.ztlOnly) opts = opts.filter(e => !e.r.car); if (!opts.length) continue;
+    const e = pick(opts), v = Object.assign({ type, ai: true, tmp: true, x: NX[n], y: NY[n], a: Math.atan2(NY[e.n] - NY[n], NX[e.n] - NX[n]), v: T.cruise * .6, prev: n, next: e.n, road: e.r, permit, lane: 1,
+      col: pick(CARCOL), honkT: 0, insT: 0, bub: "", bubT: 0, wheelie: 0 }, o);
+    if (T.bike) { if (type === "rider") v.box = pick(["#2ec4b6", "#ff6b35", "#ffd23f"]); v.rider = look(type === "rider" ? { cap: "#202020", shirt: v.box } : { shirt: "#1b1b1b", stripes: "#e8e8e8", cap: "#111" }); }
+    cars.push(v); return v; } }
+function laneOff(v) { const r = v.road; if (VT[v.type].bike) return (r.w / 2 - .7) * v.lane; if (!r.car) return 0; return (r.w > 7.5 ? r.w / 4 : r.w / 5) * v.lane; }
+function chase(v, dt) { const T = VT[v.type], d = hyp(P.x - v.x, P.y - v.y);
+  if (!P.car && d < 9) { v.v = Math.max(0, v.v - 25 * dt); if (v.v < .5 && !v.deployed) { v.deployed = true; v.mode = null; v.ai = false; v.inLane = true; v.lights = true; v.siren = false;
+      for (const s of [-1, 1]) makePed(v.x - Math.sin(v.a) * s * 1.6, v.y + Math.cos(v.a) * s * 1.6, Object.assign({ cop: true, st: "chase", spd: 5 + Math.ceil(heat) * .5 }, COPLOOK[clamp(Math.ceil(heat), 1, 5)])); }
+    return; }
+  const da = angDiff(v.a, Math.atan2(P.y - v.y, P.x - v.x)), want = clamp(d * .8, 6, T.max * .65) * (Math.abs(da) > 1.2 ? .4 : 1);
+  v.v += clamp(want - v.v, -T.acc * 2 * dt, T.acc * dt); v.a += clamp(da, -1, 1) * Math.min(1, dt * (1.5 + v.v * .3));
+  v.x += Math.cos(v.a) * v.v * dt; v.y += Math.sin(v.a) * v.v * dt;
+  const f = { x: v.x + Math.cos(v.a) * 1.4, y: v.y + Math.sin(v.a) * 1.4 }, b = { x: v.x - Math.cos(v.a) * 1.4, y: v.y - Math.sin(v.a) * 1.4 };
+  if (pushOut(f, .95) | pushOut(b, .95)) { v.x = (f.x + b.x) / 2; v.y = (f.y + b.y) / 2; v.v *= .6; v.stuckT = (v.stuckT || 0) + dt; if (v.stuckT > 2) { v.a += Math.PI / 2; v.stuckT = 0; } } }
+function updVeh(dt) {
+  const [hw, hh] = viewHalf(), h = hour, night = h >= 22 || h < 5, eve = h >= 18 || h < 2, cnt = {}, init = !started;
+  for (const c of cars) if (c.tmp) cnt[c.kind || c.type] = (cnt[c.kind || c.type] || 0) + 1;
+  const n = k => cnt[k] || 0;
+  if (n("car") < Math.round(3 + 9 * activity(h))) spawnVeh("car", {}, init);
+  else if (n("ztl") < 1 && h >= 7 && h < 20 && Math.random() < dt * .03) spawnVeh("ztl", { ztlOnly: true, col: pick(["#c9ccd6", "#2b2b33", "#8a93a0"]) }, init);
+  else if (n("patrol") < (eve ? (h >= 21 || h < 1 ? 2 : 1) : 0)) spawnVeh("police", { kind: "patrol" }, init);
+  else if (n("chase") < (heat >= 2 ? Math.min(3, Math.ceil(heat) - 1) : 0)) spawnVeh("police", { kind: "chase", mode: "chase", siren: true });
+  else if (n("rider") < Math.round(1 + 3 * Math.max(Math.exp(-((h - 13) ** 2) / 2), Math.exp(-((h - 20.5) ** 2) / 3)))) spawnVeh("rider", {}, init);
+  else if (n("maranza") + n("scooter") < (h >= 15 || h < 2 ? 4 : 1)) spawnVeh(Math.random() < .5 ? "maranza" : "scooter", {}, init);
+  else if (night && n("truck") < 1 && Math.random() < dt / 90) spawnVeh("truck", { lane: 0, hazard: true, col: "#d8d4cc" });
+  else if (night && n("wrong") < 1 && Math.random() < dt / 70) spawnVeh("car", { kind: "wrong", lane: -1, dist: R(30, 70), bub: "Tanto è un attimo!", bubT: 2.5 });
+  if (started && (evT -= dt) <= 0) { evT = R(150, 320); const t = Math.random() < .7 ? "ambulance" : "fire"; spawnVeh(t, { siren: true, col: t === "fire" ? "#c81d25" : "#f4f4f4" }); }
+  for (let i = cars.length - 1; i >= 0; i--) { const v = cars[i]; if (v === P.car) continue; const T = VT[v.type];
+    if (v.bubT > 0) v.bubT -= dt; v.honkT -= dt; v.insT -= dt;
+    if (v.tmp && (Math.abs(v.x - P.x) > hw + 90 || Math.abs(v.y - P.y) > hh + 90)) { cars.splice(i, 1); continue; }
+    if (v.mode === "chase") { if (heat === 0) { v.mode = null; v.siren = false; snap(v); v.ai = true; } else { chase(v, dt); continue; } }
+    if (!v.ai) continue;
+    if (v.type === "police" && heat > 0 && !v.deployed && hyp(v.x - P.x, v.y - P.y) < 50) { v.mode = "chase"; v.siren = true; continue; }
+    const ax = NX[v.prev], ay = NY[v.prev], bx = NX[v.next], by = NY[v.next], L = hyp(bx - ax, by - ay) || 1, off = laneOff(v);
+    const tx = bx - (by - ay) / L * off, ty = by + (bx - ax) / L * off;
+    if (hyp(tx - v.x, ty - v.y) < Math.max(1.6, v.v * .3)) {
+      const opts = adj[v.next].filter(e => e.n !== v.prev && useRoad(v.permit, e.r)), e = opts.length ? pick(opts) : adj[v.next].find(e => e.n === v.prev);
+      if (!e) { v.ai = false; v.v = 0; continue; } v.prev = v.next; v.next = e.n; v.road = e.r; continue; }
+    let want = T.cruise * (v.road.car ? 1 : .6);
+    if (T.bike && v.type !== "rider") { if (v.wheelie > 0) { v.wheelie -= dt; want *= 1.4; } else if (Math.random() < dt * .1) { v.wheelie = R(1.2, 3); insultNear(v.x, v.y); } }
+    if (T.bike && v.insT <= 0 && (v.wheelie > 0 || !v.road.car) && Math.random() < dt * .6) { v.insT = R(4, 8); insultNear(v.x, v.y, v.road.car ? INSULTS : INSULTS.concat(["Qui è isola pedonale!", "Scendi dalla bici, qui si cammina!"])); }
+    const ta = Math.atan2(ty - v.y, tx - v.x), da = angDiff(v.a, ta); if (Math.abs(da) > .5) want *= .45;
+    const ahead = T.L / 2 + 2.5 + v.v * .8, ca = Math.cos(v.a), sa = Math.sin(v.a); let block = null;
+    const check = (e, w) => { const rx = e.x - v.x, ry = e.y - v.y, f = rx * ca + ry * sa, l = -rx * sa + ry * ca; if (f > T.L / 2 - .3 && f < ahead && Math.abs(l) < T.W / 2 + w) block = e; };
+    if (v.ghost > 0) v.ghost -= dt; else {
+      if (!P.car && scene === "out") check(P, .5);
+      for (const p of peds) if (p.st !== "dead" && Math.abs(p.x - v.x) < ahead + 2 && Math.abs(p.y - v.y) < ahead + 2) check(p, .4);
+      for (const o of cars) if (o !== v && (o.ai || o === P.car || o.inLane) && Math.abs(o.x - v.x) < ahead + 8 && Math.abs(o.y - v.y) < ahead + 8) check(o, VT[o.type].W / 2); }
+    if (block) { want = 0; v.blockT = (v.blockT || 0) + dt;
+      if (v.blockT > 1.2 && v.honkT <= 0 && !T.bike) { v.honkT = R(2.5, 4.5); if (hyp(v.x - P.x, v.y - P.y) < 40) sfx.horn(); v.bub = pick(DRIVER[v.type] || DRIVER.car); v.bubT = 2; }
+      if (v.blockT > 7) { v.ghost = 2.5; v.blockT = 0; } } else v.blockT = 0;
+    if (v.kind === "wrong" && (v.dist -= v.v * dt) <= 0) { v.ai = false; v.v = 0; v.inLane = true; v.hazard = true; v.bub = "Due minuti e vado!"; v.bubT = 3; continue; }
+    if (v.type === "truck" && Math.random() < dt * .05) { v.bub = pick(DRIVER.truck); v.bubT = 2.5; if (hyp(v.x - P.x, v.y - P.y) < 40) sfx.horn(); }
+    v.v += clamp(want - v.v, -T.acc * 1.8 * dt, T.acc * dt);
+    v.a += clamp(da, -1.2, 1.2) * Math.min(1, dt * (1.5 + v.v * .4));
+    v.x += Math.cos(v.a) * v.v * dt; v.y += Math.sin(v.a) * v.v * dt;
+    if (!P.car && scene === "out" && v.v > 3 && boxPush(P, v, .35)) { hurt(v.v * 1.5); shake = .3; sfx.hit(); v.bub = "Ma guarda dove vai!"; v.bubT = 2; } } }
+
 // ---------- Giocatore ----------
 function inputVec() { if (joy.on) return [joy.dx, joy.dy];
   let x = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0), y = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0);
@@ -278,31 +362,35 @@ function shoot() { if (P.cool > 0) return; if (scene === "bar") { say("Niente ar
   panic(P.x, P.y, 35); crime(.25); }
 function action() {
   if (scene === "bar") return;
-  if (P.car) { const c = P.car; if (Math.abs(c.v) > 3) return; c.v = 0; P.car = null; sfx.carDoor(); P.x = c.x - Math.sin(c.a) * 2.2; P.y = c.y + Math.cos(c.a) * 2.2; pushOut(P, .35); return; }
+  if (P.car) { const c = P.car; if (Math.abs(c.v) > 3) return; c.v = 0; P.car = null; sfx.carDoor(); const ew = VT[c.type].W / 2 + .8; P.x = c.x - Math.sin(c.a) * ew; P.y = c.y + Math.cos(c.a) * ew; pushOut(P, .35); return; }
   if (hyp(P.x - DOOR.x, P.y - DOOR.y) < 3.5) { enterBar(); return; }
   const q = placeNear(); if (q) { if (q.kind === "food") { if (P.hp < 100) { P.hp = 100; sfx.eat(); say(`${q.name} · SALUTE PIENA`); } else say("Non hai fame adesso.");
     } else { say(`${q.name} · TERRITORIO RIVALE`); for (const p of peds) if (p.gang === q.name && p.st === "loiter") { p.bub = pick(["Fuori di qui!", "Qui non entri", "Torna all'Hollywood"]); p.bubT = 2; } } return; }
-  let best = 3.6, c = null; for (const o of cars) { const d = hyp(o.x - P.x, o.y - P.y); if (d < best) { best = d; c = o; } }
-  if (c) { P.car = c; sfx.carDoor(); if (peds.some(p => p.st !== "dead" && hyp(p.x - P.x, p.y - P.y) < 15)) crime(.4); }
+  const c = nearVeh();
+  if (c) { if (c.ai || c.mode || c.rider) { makePed(P.x, P.y, Object.assign({}, c.rider || {}, { st: "flee", t: 6, spd: 5, bub: pick(["Ladro!!", "Fermatelo!", "Il mio mezzo!"]), bubT: 2.5 })); crime(c.type === "police" ? 2 : .5); }
+    Object.assign(c, { ai: false, mode: null, siren: false, rider: null, tmp: false, inLane: false, wheelie: 0, hazard: false }); P.car = c; sfx.carDoor(); if (peds.some(p => p.st !== "dead" && hyp(p.x - P.x, p.y - P.y) < 15)) crime(.4); }
 }
 function updPlayer(dt) {
   const [ix, iy] = inputVec(); P.cool -= dt; P.flash -= dt;
-  if (P.car) { const c = P.car; let thr = 0, steer = 0;
+  if (P.car) { const c = P.car, T = VT[c.type]; let thr = 0, steer = 0;
     if (joy.on) { const m = hyp(ix, iy); if (m > .2) { const d = angDiff(c.a, Math.atan2(iy, ix)); if (Math.abs(d) < 2.2) { steer = clamp(d * 2, -1, 1); thr = m * Math.max(.25, Math.cos(d)); } else { thr = -m * .6; steer = -clamp(d, -1, 1); } } }
     else { thr = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0); steer = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0); }
-    c.v += thr * (thr * c.v < 0 ? 18 : 12) * dt; c.v = clamp(c.v, -8, 32); c.v *= 1 - (thr ? .25 : 1.1) * dt; if (keys.Space) c.v *= 1 - 3 * dt;
-    c.a += c.v / 3.2 * Math.tan(steer * .55) * dt;
+    c.v += thr * (thr * c.v < 0 ? T.acc * 1.5 : T.acc) * dt; c.v = clamp(c.v, -T.max * .25, T.max); c.v *= 1 - (thr ? .25 : 1.1) * dt; if (keys.Space) c.v *= 1 - 3 * dt;
+    c.a += c.v / (T.L * .75) * Math.tan(steer * .55) * dt;
     c.x += Math.cos(c.a) * c.v * dt; c.y += Math.sin(c.a) * c.v * dt;
-    const f = { x: c.x + Math.cos(c.a) * 1.4, y: c.y + Math.sin(c.a) * 1.4 }, b = { x: c.x - Math.cos(c.a) * 1.4, y: c.y - Math.sin(c.a) * 1.4 };
-    const hf = pushOut(f, .95), hb = pushOut(b, .95);
-    if (hf || hb) { c.x = (f.x + b.x) / 2; c.y = (f.y + b.y) / 2; if (Math.abs(c.v) > 7) { shake = .3; sfx.crash(); if (Math.abs(c.v) > 12) hurt((Math.abs(c.v) - 12) * 2.5); } c.v *= Math.abs(c.v) > 7 ? -.3 : .93; }
-    for (const o of cars) { if (o === c) continue; const d = hyp(o.x - c.x, o.y - c.y); if (d < 3.2) { const ux = (c.x - o.x) / (d || 1), uy = (c.y - o.y) / (d || 1); c.x = o.x + ux * 3.2; c.y = o.y + uy * 3.2; c.v *= Math.abs(c.v) > 7 ? -.25 : .9; } }
-    for (const p of peds) if (p.st !== "dead" && Math.abs(c.v) > 4 && hyp(p.x - c.x, p.y - c.y) < 1.9) kill(p, Math.cos(c.a), Math.sin(c.a));
+    const k = Math.max(0, T.L / 2 - 1), rr = Math.min(.95, T.W / 2 + .05), f = { x: c.x + Math.cos(c.a) * k, y: c.y + Math.sin(c.a) * k }, b = { x: c.x - Math.cos(c.a) * k, y: c.y - Math.sin(c.a) * k };
+    const hf = pushOut(f, rr), hb = pushOut(b, rr), sp0 = Math.abs(c.v);
+    if (hf || hb) { c.x = (f.x + b.x) / 2; c.y = (f.y + b.y) / 2; if (sp0 > 7) { shake = .3; sfx.crash(); if (sp0 > 12) hurt((sp0 - 12) * 2.5); } c.v *= sp0 > 7 ? -.3 : .93; }
+    let hitV = null;
+    for (const o of cars) { if (o === c || Math.abs(o.x - c.x) > 16 || Math.abs(o.y - c.y) > 16) continue;
+      for (const s of [-1, 0, 1]) { const pt = { x: c.x + Math.cos(c.a) * s * k, y: c.y + Math.sin(c.a) * s * k }, ox = pt.x, oy = pt.y; if (boxPush(pt, o, rr)) { c.x += pt.x - ox; c.y += pt.y - oy; hitV = o; } } }
+    if (hitV) { if (sp0 > 7) { shake = .3; sfx.crash(); if (VT[hitV.type].bike && hitV.rider) crashBike(hitV); else if (hitV.ai) { hitV.v = 0; hitV.bub = pick(["Ma sei scemo?!", "La mia macchina!!", "Chiamo i vigili!"]); hitV.bubT = 2.5; crime(.3); } } c.v *= sp0 > 7 ? -.3 : .85; }
+    for (const p of peds) if (p.st !== "dead" && sp0 > 4 && boxDist(p, c) < .25) { if (T.bike) { if (p.st !== "flee") { p.st = "flee"; p.t = 4; p.spd = 5; p.bub = pick(INSULTS); p.bubT = 2; } } else kill(p, Math.cos(c.a), Math.sin(c.a)); }
     P.x = c.x; P.y = c.y; P.a = c.a; return; }
   const run = keys.ShiftLeft || keys.ShiftRight || (joy.on && hyp(ix, iy) > .92), sp = run ? 9 : 5.6;
   P.x += ix * sp * dt; P.y += iy * sp * dt; P.moving = !!(ix || iy); if (P.moving) { P.anim += sp * dt * 4.5; if (TOUCH) P.a += angDiff(P.a, Math.atan2(iy, ix)) * Math.min(1, dt * 12); }
   if (!TOUCH) { const [wx, wy] = screenToWorld(mouse.x, mouse.y); P.a = Math.atan2(wy - P.y, wx - P.x); }
-  for (const o of cars) { const d = hyp(o.x - P.x, o.y - P.y); if (d < 2) { P.x = o.x + (P.x - o.x) / (d || 1) * 2; P.y = o.y + (P.y - o.y) / (d || 1) * 2; } }
+  for (const o of cars) if (Math.abs(o.x - P.x) < 9 && Math.abs(o.y - P.y) < 9) boxPush(P, o, .35);
   pushOut(P, .35); if (mouse.down || fireHeld) shoot(); }
 function updBullets(dt) {
   for (let i = bullets.length - 1; i >= 0; i--) { const b = bullets[i]; let dead = (b.life -= dt) <= 0; b.px = b.x; b.py = b.y;
@@ -389,17 +477,45 @@ function person(o, pose, sc = 1.9) {
   blob(.03, 0, .15, .15, o.skin); ctx.fillStyle = o.cap || o.hair; ctx.beginPath(); ctx.arc(.01, 0, .155, Math.PI / 2, Math.PI * 1.5); ctx.fill();
   if (o.cap) { ctx.fillRect(.08, -.12, .14, .24); } else { ctx.beginPath(); ctx.ellipse(-.02, 0, .12, .15, 0, 0, 7); ctx.fill(); }
   ctx.restore(); }
-function car(c, night) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
-  ctx.fillStyle = "rgba(0,0,0,.4)"; ctx.fillRect(-1.95, -.8, 4.4, 2);
-  ctx.fillStyle = c.col; ctx.strokeStyle = K; ctx.lineWidth = .12; ctx.beginPath(); ctx.roundRect(-2.15, -.95, 4.3, 1.9, .45); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "rgba(255,255,255,.22)"; ctx.fillRect(-1.9, -.85, 3.8, .25);
-  ctx.fillStyle = "#121a2a"; ctx.beginPath(); ctx.roundRect(.4, -.78, .75, 1.56, .15); ctx.fill(); ctx.beginPath(); ctx.roundRect(-1.6, -.74, .55, 1.48, .12); ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(-1.05, -.8, 1.45, 1.6); ctx.fillStyle = "#6fd3ff"; ctx.fillRect(.55, -.6, .12, .5);
-  ctx.fillStyle = "#fff6c8"; ctx.fillRect(1.95, -.8, .2, .4); ctx.fillRect(1.95, .4, .2, .4);
-  ctx.fillStyle = "#ff2040"; ctx.fillRect(-2.15, -.8, .14, .35); ctx.fillRect(-2.15, .45, .14, .35);
-  if (night && c === P.car) { const g = ctx.createRadialGradient(6, 0, .5, 6, 0, 9); g.addColorStop(0, "rgba(255,240,190,.4)"); g.addColorStop(1, "rgba(255,240,190,0)");
-    ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(2, -.6); ctx.lineTo(13, -5); ctx.lineTo(13, 5); ctx.lineTo(2, .6); ctx.fill(); ctx.globalCompositeOperation = "source-over"; }
-  ctx.restore(); }
+function vehicle(c, night) { const T = VT[c.type], L = T.L / 2, W = T.W / 2, blink = Math.floor(now / 250) % 2;
+  ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
+  if (T.bike) { drawBike(c); ctx.restore(); return; }
+  ctx.fillStyle = "rgba(0,0,0,.4)"; ctx.fillRect(-L + .2, -W + .15, T.L, T.W); ctx.strokeStyle = K; ctx.lineWidth = .12;
+  if (c.type === "truck" || c.type === "fire" || c.type === "ambulance") { const cab = c.type === "truck" ? 2.3 : c.type === "fire" ? 2 : 1.4, body = T.L - cab - .1;
+    ctx.fillStyle = c.type === "truck" ? "#e6e1d6" : c.col; ctx.beginPath(); ctx.roundRect(-L, -W, body, T.W, .15); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = c.type === "truck" ? "#3d5a80" : c.col; ctx.beginPath(); ctx.roundRect(L - cab, -W + .05, cab, T.W - .1, .3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#121a2a"; ctx.fillRect(L - .55, -W + .25, .35, T.W - .5);
+    if (c.type === "truck") { ctx.strokeStyle = "rgba(0,0,0,.25)"; ctx.lineWidth = .06; for (let x = -L + .8; x < L - cab; x += .8) { ctx.beginPath(); ctx.moveTo(x, -W); ctx.lineTo(x, W); ctx.stroke(); } }
+    if (c.type === "fire") { ctx.strokeStyle = "#c9ccd6"; ctx.lineWidth = .1; ctx.beginPath(); ctx.moveTo(-L + .3, -.4); ctx.lineTo(L - cab - .3, -.4); ctx.moveTo(-L + .3, .4); ctx.lineTo(L - cab - .3, .4);
+      for (let x = -L + .5; x < L - cab - .3; x += .5) { ctx.moveTo(x, -.4); ctx.lineTo(x, .4); } ctx.stroke(); }
+    if (c.type === "ambulance") { ctx.fillStyle = "#ff7a00"; ctx.fillRect(-L, -W, body, .22); ctx.fillRect(-L, W - .22, body, .22); ctx.fillStyle = "#1e5bd8"; ctx.fillRect(-L + 1, -.25, 1.6, .5); } }
+  else { ctx.fillStyle = c.type === "police" ? "#1d4fa8" : c.col; ctx.beginPath(); ctx.roundRect(-L, -W, T.L, T.W, .45); ctx.fill(); ctx.stroke();
+    if (c.type === "police") { ctx.fillStyle = "#f2f2f2"; ctx.fillRect(-L + .3, -W, T.L - .6, .2); ctx.fillRect(-L + .3, W - .2, T.L - .6, .2); }
+    ctx.fillStyle = "rgba(255,255,255,.22)"; ctx.fillRect(-L + .25, -W + .1, T.L - .5, .25);
+    ctx.fillStyle = "#121a2a"; ctx.beginPath(); ctx.roundRect(.4, -W + .17, .75, T.W - .34, .15); ctx.fill(); ctx.beginPath(); ctx.roundRect(-1.6, -W + .21, .55, T.W - .42, .12); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(-1.05, -W + .15, 1.45, T.W - .3); ctx.fillStyle = "#6fd3ff"; ctx.fillRect(.55, -.6, .12, .5);
+    if (c.type === "ztl") { ctx.fillStyle = "#ffd166"; ctx.fillRect(.75, W - .45, .18, .18); } }
+  ctx.fillStyle = "#fff6c8"; ctx.fillRect(L - .2, -W + .15, .2, .4); ctx.fillRect(L - .2, W - .55, .2, .4);
+  ctx.fillStyle = "#ff2040"; ctx.fillRect(-L, -W + .15, .14, .35); ctx.fillRect(-L, W - .5, .14, .35);
+  const bar = c.type === "police" || c.type === "ambulance" || c.type === "fire", on = c.siren || c.lights;
+  if (bar) { const x = c.type === "police" ? -.4 : L - (c.type === "fire" ? 1.6 : 1.1); ctx.fillStyle = on && blink ? "#9cc3ff" : "#1b3a8a"; ctx.fillRect(x, -W + .35, .3, .5); ctx.fillStyle = on && !blink ? "#9cc3ff" : "#1b3a8a"; ctx.fillRect(x, W - .85, .3, .5); }
+  if (c.hazard && blink) { ctx.fillStyle = "#ffb000"; for (const [x, y] of [[L - .15, -W], [L - .15, W - .2], [-L, -W], [-L, W - .2]]) ctx.fillRect(x, y, .2, .2); }
+  ctx.restore();
+  if (bar && on) LIGHTS.push({ x: c.x, y: c.y, k: blink ? "90,150,255" : "40,90,255", r: 7 });
+  if (c.hazard && blink) LIGHTS.push({ x: c.x, y: c.y, k: "255,170,0", r: 5 });
+  if (night && (c === P.car || c.ai || c.mode)) LIGHTS.push({ x: c.x + Math.cos(c.a) * L, y: c.y + Math.sin(c.a) * L, a: c.a, cone: true }); }
+function drawBike(c) { const T = VT[c.type], wh = c.wheelie > 0, sc = c.type === "scooter", fw = T.L / 2 - .2, rw = -T.L / 2 + .2;
+  ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(.1, .12, T.L / 2, .35, 0, 0, 7); ctx.fill();
+  capsule(rw, 0, fw, 0, sc ? .2 : .1, sc ? "#2b2b33" : c.type === "rider" ? "#3a3a44" : "#c1121f");
+  blob(rw, 0, sc ? .14 : .3, .09, "#15151a"); if (wh) blob(fw + .15, -.05, .26, .1, "#5a5a66"); else blob(fw, 0, sc ? .14 : .3, .09, "#15151a");
+  capsule(fw - .1, -.32, fw - .1, .32, .06, "#c9ccd6");
+  if (c.box) { ctx.fillStyle = c.box; ctx.strokeStyle = K; ctx.lineWidth = .06; ctx.fillRect(rw - .25, -.3, .55, .6); ctx.strokeRect(rw - .25, -.3, .55, .6); }
+  const r = c === P.car ? PLOOK : c.rider; if (r) person(Object.assign(r, { x: wh ? -.25 : sc ? 0 : -.05, y: 0, a: 0, anim: 0 }), "sit", 1.25); }
+function drawLights(nt) { ctx.globalCompositeOperation = "lighter";
+  for (const l of LIGHTS) { if (l.cone) { if (nt < .3) continue; ctx.save(); ctx.translate(l.x, l.y); ctx.rotate(l.a); const g = ctx.createRadialGradient(4, 0, .5, 4, 0, 9);
+      g.addColorStop(0, `rgba(255,240,190,${.35 * nt})`); g.addColorStop(1, "rgba(255,240,190,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, -.6); ctx.lineTo(11, -4.5); ctx.lineTo(11, 4.5); ctx.lineTo(0, .6); ctx.fill(); ctx.restore(); continue; }
+    const g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r); g.addColorStop(0, `rgba(${l.k},${.25 + .35 * nt})`); g.addColorStop(1, `rgba(${l.k},0)`); ctx.fillStyle = g; ctx.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2); }
+  ctx.globalCompositeOperation = "source-over"; }
 function pedPose(p) { return p.st === "dead" ? "dead" : p.st === "idle" || (p.st === "loiter" && !p.mv) ? "idle" : p.st === "flee" || p.st === "chase" ? "run" : "walk"; }
 function drawFx() {
   for (const b of blood) { ctx.fillStyle = b.pool ? "#5c0711" : "#7d0b17"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill();
@@ -424,7 +540,7 @@ function drawOut() {
   const vis = roads.filter(r => r.x1 > vx0 && r.x0 < vx1 && r.y1 > vy0 && r.y0 < vy1);
   ctx.strokeStyle = K; for (const r of vis) if (r.car) { ctx.lineWidth = r.w + 3.6; roadPath(r); ctx.stroke(); }
   ctx.strokeStyle = PAT.side; for (const r of vis) if (r.car) { ctx.lineWidth = r.w + 3.2; roadPath(r); ctx.stroke(); }
-  for (const r of vis) if (!r.car) { ctx.strokeStyle = r.t === "pedestrian" ? PAT.porf : PAT.side; ctx.lineWidth = r.w; roadPath(r); ctx.stroke(); }
+  for (const r of vis) if (!r.car) { ctx.strokeStyle = r.t === "pedestrian" || r.ztl ? PAT.porf : PAT.side; ctx.lineWidth = r.w; roadPath(r); ctx.stroke(); }
   ctx.strokeStyle = "#1c1a22"; for (const r of vis) if (r.car) { ctx.lineWidth = r.w + .4; roadPath(r); ctx.stroke(); }
   ctx.strokeStyle = PAT.asph; for (const r of vis) if (r.car) { ctx.lineWidth = r.w; roadPath(r); ctx.stroke(); }
   ctx.strokeStyle = "#e9dc8f"; ctx.lineWidth = .18; ctx.setLineDash([2.5, 3]); for (const r of vis) if (r.w >= 8.5 && r.car) { roadPath(r); ctx.stroke(); } ctx.setLineDash([]);
@@ -434,7 +550,7 @@ function drawOut() {
   const pulse = .5 + .5 * Math.sin(now / 250);
   ctx.strokeStyle = `rgba(255,46,136,${.45 + .5 * pulse})`; ctx.lineWidth = .3; ctx.beginPath(); ctx.arc(DOOR.x, DOOR.y, 1.4 + pulse * .4, 0, 7); ctx.stroke();
   for (const q of PLACES) { ctx.strokeStyle = q.col; ctx.globalAlpha = .45 + .4 * pulse; ctx.lineWidth = .25; ctx.beginPath(); ctx.arc(q.dx, q.dy, 1.2 + pulse * .3, 0, 7); ctx.stroke(); } ctx.globalAlpha = 1;
-  for (const c of cars) if (c.x > vx0 && c.x < vx1 && c.y > vy0 && c.y < vy1) car(c, nt > .3);
+  LIGHTS = []; for (const c of cars) if (c.x > vx0 && c.x < vx1 && c.y > vy0 && c.y < vy1) vehicle(c, nt > .3);
   for (const p of peds) if (p.st === "dead") person(p, "dead");
   for (const p of peds) if (p.st !== "dead") person(p, pedPose(p));
   if (!P.car) person(Object.assign(PLOOK, { x: P.x, y: P.y, a: P.a, anim: P.anim, flash: P.flash }), "gun");
@@ -460,7 +576,8 @@ function drawOut() {
     if (!P.car) { const l = ctx.createRadialGradient(P.x, P.y, 0, P.x, P.y, 5); l.addColorStop(0, `rgba(255,220,200,${.3 * nt})`); l.addColorStop(1, "rgba(255,220,200,0)"); ctx.fillStyle = l; ctx.fillRect(P.x - 5, P.y - 5, 10, 10); }
     for (const q of PLACES) { const l = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 10); l.addColorStop(0, q.col + "55"); l.addColorStop(1, q.col + "00"); ctx.fillStyle = l; ctx.fillRect(q.x - 10, q.y - 10, 20, 20); }
     const g = ctx.createRadialGradient(SIGN.x, SIGN.y, 0, SIGN.x, SIGN.y, 16); g.addColorStop(0, `rgba(255,46,136,${.35 * nt})`); g.addColorStop(1, "rgba(255,46,136,0)"); ctx.fillStyle = g; ctx.fillRect(SIGN.x - 16, SIGN.y - 16, 32, 32);
-    ctx.globalCompositeOperation = "source-over"; } }
+    ctx.globalCompositeOperation = "source-over"; }
+  drawLights(nt); }
 const PLOOK = { shirt: "#f4efe6", pants: "#2a2a35", skin: "#e0a982", hair: "#141414" };
 
 // ---------- Disegno interno ----------
@@ -538,7 +655,8 @@ function hud(cw, ch) {
     main.fillStyle = "#29f2e4"; main.fillRect(x + 4, y + 4, mw, mh); main.drawImage(mini, x, y, mw, mh); main.strokeStyle = "#ff2e88"; main.lineWidth = 3; main.strokeRect(x, y, mw, mh);
     const s = k * .14; for (const q of PLACES) { main.fillStyle = q.col; main.fillRect(x + q.dx * s - 2.5, y + q.dy * s - 2.5, 5, 5); }
     main.fillStyle = "#ff2e88"; main.fillRect(x + DOOR.x * s - 3, y + DOOR.y * s - 3, 6, 6);
-    main.fillStyle = "#3d6bff"; for (const p of peds) if (p.cop && p.st !== "dead") main.fillRect(x + p.x * s - 1.5, y + p.y * s - 1.5, 3, 3);
+    main.fillStyle = "#3d6bff"; for (const c of cars) if (c.type === "police") main.fillRect(x + c.x * s - 2, y + c.y * s - 2, 4, 4);
+    for (const p of peds) if (p.cop && p.st !== "dead") main.fillRect(x + p.x * s - 1.5, y + p.y * s - 1.5, 3, 3);
     main.fillStyle = "#fff"; main.beginPath(); main.arc(x + P.x * s, y + P.y * s, 3.5, 0, 7); main.fill(); }
   if (scene === "bar" && !match) { main.font = "20px VT323, monospace"; main.textAlign = "right"; main.fillStyle = "#29f2e4"; main.fillText(`Maxischermo spento · prossima partita ${nextKick()}`, cw - pad, top + 20); }
   if (scene === "bar" && match) { // riquadro del maxischermo
@@ -555,7 +673,7 @@ function hud(cw, ch) {
   else if (P.car) hint = Math.abs(P.car.v) > 3 ? "" : `${TOUCH ? "AZIONE" : "E"} · scendi dall'auto`;
   else if (hyp(P.x - DOOR.x, P.y - DOOR.y) < 3.5) hint = `${TOUCH ? "AZIONE" : "E"} · entra all'Hollywood`;
   else if (placeNear()) { const q = placeNear(); hint = `${TOUCH ? "AZIONE" : "E"} · ${q.kind === "food" ? "mangia da " + q.name : q.name + " (rivali)"}`; }
-  else if (cars.some(o => hyp(o.x - P.x, o.y - P.y) < 3.6)) hint = `${TOUCH ? "AZIONE" : "E"} · ruba l'auto`;
+  else { const nv = nearVeh(); if (nv) hint = `${TOUCH ? "AZIONE" : "E"} · ${STEAL[nv.type]}`; }
   if (hint) { main.font = "24px VT323, monospace"; main.textAlign = "center"; const w = main.measureText(hint).width + 24;
     main.fillStyle = "#ff2e88"; main.fillRect(cw / 2 - w / 2 + 4, ch - 60, w, 34); main.fillStyle = "#170c24"; main.fillRect(cw / 2 - w / 2, ch - 64, w, 34);
     main.fillStyle = "#29f2e4"; main.fillText(hint, cw / 2, ch - 40); }
@@ -572,6 +690,7 @@ function audioInit() { if (AC) return; try { AC = new (window.AudioContext || wi
   const nsrc = () => { const s = AC.createBufferSource(); s.buffer = NB; s.loop = true; s.start(); return s; };
   loop("engine", g => { const o = AC.createOscillator(), f = AC.createBiquadFilter(); o.type = "sawtooth"; f.type = "lowpass"; f.frequency.value = 500; o.connect(f).connect(g); o.start(); LOOP.engineOsc = o; });
   loop("siren", g => { const o = AC.createOscillator(), l = AC.createOscillator(), lg = AC.createGain(); o.type = "square"; o.frequency.value = 800; l.frequency.value = 1.3; lg.gain.value = 180; l.connect(lg).connect(o.frequency); const f = AC.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 1800; o.connect(f).connect(g); o.start(); l.start(); });
+  loop("bitone", g => { const o = AC.createOscillator(), l = AC.createOscillator(), lg = AC.createGain(); o.type = "triangle"; o.frequency.value = 770; l.type = "square"; l.frequency.value = .8; lg.gain.value = 110; l.connect(lg).connect(o.frequency); o.connect(g); o.start(); l.start(); });
   loop("chatter", g => { const f = AC.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 520; f.Q.value = .9; const l = AC.createOscillator(), lg = AC.createGain(); l.frequency.value = 3.1; lg.gain.value = .25; const am = AC.createGain(); am.gain.value = .75; l.connect(lg).connect(am.gain); nsrc().connect(f).connect(am).connect(g); l.start(); });
   loop("tv", g => { const f = AC.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 1100; f.Q.value = .5; nsrc().connect(f).connect(g); });
   loop("city", g => { const f = AC.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 260; nsrc().connect(f).connect(g); }); }
@@ -593,13 +712,15 @@ const sfx = {
   cheer() { noiseHit(3, { f: 900, q: .6, vol: .45, a: .25 }); noiseHit(2.4, { f: 1800, q: 1.5, vol: .2, a: .4 }); },
   groan() { noiseHit(1.8, { f: 320, q: .8, vol: .35, a: .2 }); tone(240, 1.3, { type: "sawtooth", vol: .025, to: 150 }); },
   eat() { for (let i = 0; i < 4; i++) noiseHit(.07, { f: 2400, q: 3, vol: .25, delay: i * .16 }); tone(660, .15, { vol: .08, delay: .7 }); tone(880, .2, { vol: .08, delay: .82 }); },
+  horn() { tone(392, .3, { type: "square", vol: .05 }); tone(494, .3, { type: "square", vol: .04 }); },
   scream() { tone(R(650, 900), .55, { type: "sawtooth", vol: .05, to: R(380, 520), a: .05 }); },
 };
 let stepPhase = 0;
 function audioFrame(dt) { if (!AC) return; const set = (n, v) => LOOP[n] && LOOP[n].gain.setTargetAtTime(muted ? 0 : v, AC.currentTime, .12);
-  const car = scene === "out" && P.car; set("engine", car ? .08 + Math.min(.12, Math.abs(car.v) * .005) : 0); if (car) LOOP.engineOsc.frequency.setTargetAtTime(38 + Math.abs(car.v) * 4.5, AC.currentTime, .1);
-  let near = 1e9; for (const p of peds) if (p.cop && p.st !== "dead") near = Math.min(near, hyp(p.x - P.x, p.y - P.y));
-  set("siren", scene === "out" && heat > 0 ? clamp(.07 - near / 1200, 0, .07) : 0);
+  const car = scene === "out" && P.car && !VT[P.car.type].bike; set("engine", car ? .08 + Math.min(.12, Math.abs(car.v) * .005) : 0); if (car) LOOP.engineOsc.frequency.setTargetAtTime(38 + Math.abs(car.v) * 4.5, AC.currentTime, .1);
+  let near = 1e9, nearB = 1e9; if (heat > 0) for (const p of peds) if (p.cop && p.st !== "dead") near = Math.min(near, hyp(p.x - P.x, p.y - P.y));
+  for (const c of cars) if (c.siren) { const d = hyp(c.x - P.x, c.y - P.y); if (c.type === "police") near = Math.min(near, d); else nearB = Math.min(nearB, d); }
+  set("siren", scene === "out" ? clamp(.07 - near / 1200, 0, .07) : 0); set("bitone", scene === "out" ? clamp(.06 - nearB / 1500, 0, .06) : 0);
   set("chatter", scene === "bar" ? .05 + guests.length * .006 : 0); set("tv", scene === "bar" && playing() ? .035 : 0); set("city", scene === "out" ? .05 : 0);
   if (started && !P.car && P.moving) { const ph = Math.floor(P.anim / Math.PI); if (ph !== stepPhase) { stepPhase = ph; sfx.step(keys.ShiftLeft || keys.ShiftRight); } }
   bgm.volume = muted ? 0 : scene === "bar" ? .3 : .55; }
@@ -631,7 +752,7 @@ function frame(t) {
   let lx = 0, ly = 0;
   if (scene === "out") {
     if (started) { updPlayer(dt); updBullets(dt); }
-    updPeds(started ? dt : .016);
+    updPeds(started ? dt : .016); updVeh(started ? dt : .016);
     const z = clamp(Math.max(cw, ch) / 1100, .9, 1.15), tS = (P.car ? clamp(17 - Math.abs(P.car.v) * .4, 8.5, 17) : 26) * z;
     S += (tS - S) * Math.min(1, dt * 2);
     if (!P.car) { if (TOUCH) { lx = Math.cos(P.a) * 3; ly = Math.sin(P.a) * 3; } else { lx = clamp((mouse.x - cw / 2) / S * .3, -7, 7); ly = clamp((mouse.y - ch / 2) / S * .3, -5, 5); } }
@@ -655,7 +776,8 @@ function frame(t) {
     main.fillStyle = (Math.sin(now / 90) > .97) ? "#5a1030" : nt > .3 ? "#ffd1e6" : "#ff2e88"; main.fillText("HOLLYWOOD", qx, qy - S * 2.2);
     main.font = `${Math.max(11, S * .62)}px Bungee, Impact, sans-serif`; for (const q of PLACES) { const [x, y] = B2S(q.x, q.y); main.shadowColor = q.col; main.fillStyle = q.col; main.fillText(q.name, x, y - S * 1.6); }
     main.shadowBlur = 0;
-    for (const p of peds) if (p.bubT > 0) { const [bx, by] = B2S(p.x, p.y); bubble(bx, by - S * .9, p.bub, p.cop); } }
+    for (const p of peds) if (p.bubT > 0) { const [bx, by] = B2S(p.x, p.y); bubble(bx, by - S * .9, p.bub, p.cop); }
+    for (const c of cars) if (c.bubT > 0) { const [bx, by] = B2S(c.x, c.y); bubble(bx, by - S * 1.4, c.bub); } }
   else for (const g of guests) if (g.bubT > 0) { const [bx, by] = B2S(g.x, g.y); bubble(bx, by - S * .55, g.bub); }
   main.restore();
   if (P.hurtT > 0) { main.fillStyle = `rgba(255,0,40,${P.hurtT * .5})`; main.fillRect(0, 0, cw, ch); }

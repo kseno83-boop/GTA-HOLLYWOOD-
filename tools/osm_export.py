@@ -13,7 +13,9 @@ import xml.etree.ElementTree as ET
 from osm_preview import HOLLYWOOD, PLAY_BBOX, load
 
 ROAD_TYPES = ["primary", "secondary", "tertiary", "unclassified", "residential", "living_street",
-              "service", "pedestrian", "footway", "cycleway", "steps", "path"]
+              "service", "pedestrian", "footway", "cycleway", "steps", "path", "ztl"]
+# Strade aperte solo ai veicoli autorizzati (isola pedonale / ZTL del centro).
+ZTL_BASE = {"secondary", "tertiary", "unclassified", "residential", "living_street"}
 GREEN = {"park", "garden", "pitch", "grass", "meadow", "forest", "recreation_ground", "playground"}
 POI = {"bar": 0, "pub": 0, "cafe": 1, "police": 2, "place_of_worship": 3, "townhall": 3, "fuel": 4}
 # Punti d'interesse del gioco: nodo OSM, nome mostrato, tipo.
@@ -51,6 +53,7 @@ def main():
     gnode, gidx = [], {}
     names, name_idx = [], {}
     buildings, roads, green, water, rivers, rails, pois = [], [], [], [], [], [], []
+    ztl_names = set()
     for w in root.iter("way"):
         t = tags(w)
         refs = [nd.get("ref") for nd in w.findall("nd") if nd.get("ref") in nodes]
@@ -70,7 +73,11 @@ def main():
             if nm and nm not in name_idx:
                 name_idx[nm] = len(names)
                 names.append(nm)
-            roads.append([ROAD_TYPES.index(t["highway"]), name_idx.get(nm, -1)] + ids)
+            kind = t["highway"]
+            if kind in ZTL_BASE and nm and (t.get("motor_vehicle") in ("private", "no") or t.get("access") in ("private", "no")):
+                kind = "ztl"
+                ztl_names.add(nm)
+            roads.append([ROAD_TYPES.index(kind), name_idx.get(nm, -1)] + ids)
         elif "building" in t and closed and len(pts) > 3:
             try:
                 h = float(t.get("building:levels", "3")) * 3.2
@@ -119,6 +126,7 @@ def main():
     with open(out, "w", encoding="utf-8") as f:
         f.write("// Generato da tools/osm_export.py. Dati (c) OpenStreetMap contributors, ODbL.\n")
         f.write("window.MAP=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n")
+    print("ZTL:", ", ".join(sorted(ztl_names)))
     print("Scritto %s: %d edifici, %d strade, %d nodi, porta a %.1f m dal nodo del bar"
           % (out, len(buildings), len(roads), len(gnode) // 2, best[0]))
 
