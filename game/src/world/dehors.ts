@@ -3,13 +3,12 @@
 // Davanti resta lo spazio giusto per far passare un'auto. A sinistra della porta (guardandola dalla strada) c'è il
 // tavolo presidenziale, riservato agli abituali e al protagonista.
 // Coordinate locali: u lungo la facciata (verso nord), n dalla facciata verso la strada; origine = porta sulla facciata.
-import MAP from "../data/map.json";
-import { DOOR, NX, NY, roads, solids, insertNodes } from "./map";
+import { DOOR, NX, NY, roads, solids, insertNodes, buildings } from "./map";
 
 /** Bordo di edificio più vicino alla porta OSM dell'Hollywood: è la facciata su Corso Magenta. */
 function facade() {
   let best = { d: 1e9, ax: 0, ay: 0, dx: 0, dy: 0, L: 1 };
-  for (const b of MAP.buildings) { const p = b.slice(1).map(v => v / 10), n = p.length / 2;
+  for (const b of buildings) { const p = b.p, n = b.n;
     for (let i = 0; i < n; i++) { const j = (i + 1) % n, ax = p[2 * i], ay = p[2 * i + 1], dx = p[2 * j] - ax, dy = p[2 * j + 1] - ay, L = Math.hypot(dx, dy) || 1;
       const t = Math.max(0, Math.min(1, ((DOOR.x - ax) * dx + (DOOR.y - ay) * dy) / (L * L))), d = Math.hypot(DOOR.x - ax - t * dx, DOOR.y - ay - t * dy);
       if (d < best.d) best = { d, ax, ay, dx, dy, L }; } }

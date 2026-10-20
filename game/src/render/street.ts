@@ -2,9 +2,10 @@
 // Terreno, strade con sensi unici, mezzi e persone, poi edifici pseudo-3D stile GTA2, notte e luci.
 import { G, P, PLOOK, peds, cars, dark } from "../core/state";
 import { K, hyp } from "../core/util";
-import { NX, NY, WW, WH, roads, green, water, rivers, rails, buildings, DOOR, SIGN, POIS, PLACES, type Road } from "../world/map";
+import { NX, NY, WW, WH, roads, green, water, rivers, rails, DOOR, SIGN, POIS, PLACES, type Road } from "../world/map";
 import { V, PAT, worldXf } from "./view";
 import { SPOTS } from "../world/poi";
+import { drawBuildings } from "./buildings";
 import { drawDehorsGround, drawDehorsTop, drawDehorsGlow } from "./dehors";
 import { LIGHTS, person, vehicle, drawFx, drawBullets, drawLights, pedPose, wreckOverlay, drawParts } from "./sprites";
 
@@ -47,22 +48,12 @@ export function drawOut() {
   if (!P.car) person(Object.assign(PLOOK, { x: P.x, y: P.y, a: P.a, anim: P.anim, flash: P.flash }), P.seat >= 0 && !(P.flash > 0) ? "sit" : "gun");
   drawBullets(); drawParts();
   drawDehorsTop(nt);
-  // edifici in pseudo-3D: tetti proiettati verso la camera come in GTA2
-  const CH = Math.max(55, 1300 / S), list = buildings.filter(b => b.x1 > vx0 && b.x0 < vx1 && b.y1 > vy0 && b.y0 < vy1);
-  list.sort((a, b) => hyp(b.cx - camX, b.cy - camY) - hyp(a.cx - camX, a.cy - camY));
-  for (const b of list) { const f = b.h / (CH - b.h), p = b.p, n = b.n, rx: number[] = [], ry: number[] = [], [r0, g0, b0] = b.roof;
-    for (let i = 0; i < n; i++) { rx.push(p[2 * i] + (p[2 * i] - camX) * f); ry.push(p[2 * i + 1] + (p[2 * i + 1] - camY) * f); }
-    for (let i = 0; i < n; i++) { const j = (i + 1) % n, dx = p[2 * j] - p[2 * i], dy = p[2 * j + 1] - p[2 * i + 1], L = hyp(dx, dy) || 1, nx = b.s * dy / L, ny = -b.s * dx / L;
-      if (nx * (camX - p[2 * i]) + ny * (camY - p[2 * i + 1]) <= 0) continue;
-      const sh = .32 + .32 * Math.max(0, -nx * .6 - ny * .8);
-      ctx.fillStyle = `rgb(${215 * sh | 0},${180 * sh | 0},${190 * sh | 0})`; ctx.strokeStyle = K; ctx.lineWidth = .12;
-      ctx.beginPath(); ctx.moveTo(p[2 * i], p[2 * i + 1]); ctx.lineTo(p[2 * j], p[2 * j + 1]); ctx.lineTo(rx[j], ry[j]); ctx.lineTo(rx[i], ry[i]); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-    ctx.fillStyle = `rgb(${r0},${g0},${b0})`; ctx.strokeStyle = K; ctx.lineWidth = .3;
-    ctx.beginPath(); ctx.moveTo(rx[0], ry[0]); for (let i = 1; i < n; i++) ctx.lineTo(rx[i], ry[i]); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = `rgba(255,255,255,.14)`; ctx.lineWidth = .5; ctx.stroke(); }
-  // notte e luci
-  if (nt > 0) { ctx.fillStyle = `rgba(20,8,48,${.6 * nt})`; ctx.fillRect(camX - hw - 2, camY - hh - 2, hw * 2 + 4, hh * 2 + 4);
-    ctx.globalCompositeOperation = "lighter";
+  // velo della notte sul terreno; gli edifici si scuriscono da soli (così le finestre accese restano dietro a quelli più vicini)
+  if (nt > 0) { ctx.fillStyle = `rgba(20,8,48,${.6 * nt})`; ctx.fillRect(camX - hw - 2, camY - hh - 2, hw * 2 + 4, hh * 2 + 4); }
+  // edifici in pseudo-3D: tetti proiettati verso la camera come in GTA2 (render/buildings.ts)
+  drawBuildings(vx0, vx1, vy0, vy1, .6 * nt);
+  // luci
+  if (nt > 0) { ctx.globalCompositeOperation = "lighter";
     for (const q of POIS) { if (q.x < vx0 || q.x > vx1 || q.y < vy0 || q.y > vy1) continue; const col = q.k === 2 ? "70,110,255" : q.k === 4 ? "255,80,60" : q.k === 3 ? "190,120,255" : "255,150,70";
       const g = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 9); g.addColorStop(0, `rgba(${col},${.4 * nt})`); g.addColorStop(1, `rgba(${col},0)`); ctx.fillStyle = g; ctx.fillRect(q.x - 9, q.y - 9, 18, 18); }
     if (!P.car) { const l = ctx.createRadialGradient(P.x, P.y, 0, P.x, P.y, 5); l.addColorStop(0, `rgba(255,220,200,${.3 * nt})`); l.addColorStop(1, "rgba(255,220,200,0)"); ctx.fillStyle = l; ctx.fillRect(P.x - 5, P.y - 5, 10, 10); }

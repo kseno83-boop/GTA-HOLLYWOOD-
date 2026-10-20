@@ -29,14 +29,15 @@ export const roads: Road[] = MAP.roads.map(r => {
 const polys = (a: number[][]) => a.map(f => f.map(v => v / 10));
 export const green = polys(MAP.green), water = polys(MAP.water), rivers = polys(MAP.rivers), rails = polys(MAP.rails);
 
-export interface Building { p: number[]; n: number; h: number; s: number; cx: number; cy: number; x0: number; y0: number; x1: number; y1: number; roof: number[] }
-const ROOFS = [[178, 82, 64], [150, 70, 58], [196, 104, 70], [120, 108, 126], [166, 88, 84], [138, 118, 140]];
+/** Edificio OSM: poligono (metri), verso dei vertici s, baricentro, riquadro; tipo OSM (building=...) e piani se noti (0 = sconosciuti).
+ *  Altezza, tetto, colori e finestre li sceglie render/buildings.ts. */
+export interface Building { p: number[]; n: number; s: number; area: number; cx: number; cy: number; x0: number; y0: number; x1: number; y1: number; kind: string; levels: number }
 const CELL = 20, grid = new Map<number, Building[]>();
-export const buildings: Building[] = MAP.buildings.map((b, k) => {
-  const p = b.slice(1).map(v => v / 10), n = p.length / 2; let a2 = 0, cx = 0, cy = 0, x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+export const buildings: Building[] = MAP.buildings.map(b => {
+  const p = b.slice(2).map(v => v / 10), n = p.length / 2; let a2 = 0, cx = 0, cy = 0, x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   for (let i = 0; i < n; i++) { const j = (i + 1) % n; a2 += p[2 * i] * p[2 * j + 1] - p[2 * j] * p[2 * i + 1]; cx += p[2 * i]; cy += p[2 * i + 1];
     x0 = Math.min(x0, p[2 * i]); x1 = Math.max(x1, p[2 * i]); y0 = Math.min(y0, p[2 * i + 1]); y1 = Math.max(y1, p[2 * i + 1]); }
-  const bd: Building = { p, n, h: b[0], s: Math.sign(a2) || 1, cx: cx / n, cy: cy / n, x0, y0, x1, y1, roof: ROOFS[k % ROOFS.length] };
+  const bd: Building = { p, n, s: Math.sign(a2) || 1, area: Math.abs(a2) / 2, cx: cx / n, cy: cy / n, x0, y0, x1, y1, kind: MAP.bkinds[b[1]], levels: b[0] / 10 };
   for (let gx = Math.floor(x0 / CELL); gx <= Math.floor(x1 / CELL); gx++) for (let gy = Math.floor(y0 / CELL); gy <= Math.floor(y1 / CELL); gy++) {
     const key = gx * 1000 + gy; let cell = grid.get(key); if (!cell) grid.set(key, cell = []); cell.push(bd); }
   return bd;

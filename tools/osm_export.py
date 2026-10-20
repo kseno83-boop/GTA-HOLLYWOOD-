@@ -54,6 +54,7 @@ def main():
     gnode, gidx = [], {}
     names, name_idx = [], {}
     buildings, roads, green, water, rivers, rails, pois = [], [], [], [], [], [], []
+    bkinds, bkind_idx = [], {}
     ztl_names = set()
     oneway_names = set()
     for w in root.iter("way"):
@@ -88,10 +89,18 @@ def main():
             roads.append([ROAD_TYPES.index(kind) + (100 if ow else 0), name_idx.get(nm, -1)] + ids)
         elif "building" in t and closed and len(pts) > 3:
             try:
-                h = float(t.get("building:levels", "3")) * 3.2
+                lv = float(t.get("building:levels", "0"))
             except ValueError:
-                h = 9.6
-            buildings.append([round(min(h, 40))] + flat)
+                lv = 0
+            if out.endswith(".json"):
+                # gioco Phaser: piani (x10, 0 = sconosciuti) e tipo di edificio; altezza, tetto e colori li sceglie il gioco
+                kind = "church" if t.get("amenity") == "place_of_worship" or t["building"] in ("church", "chapel", "cathedral") else t["building"]
+                if kind not in bkind_idx:
+                    bkind_idx[kind] = len(bkinds)
+                    bkinds.append(kind)
+                buildings.append([int(round(lv * 10)), bkind_idx[kind]] + flat)
+            else:  # vecchia demo: altezza in metri
+                buildings.append([round(min((lv or 3) * 3.2, 40))] + flat)
         elif (t.get("leisure") in GREEN or t.get("landuse") in GREEN) and closed:
             green.append(flat)
         elif t.get("natural") == "water" and closed:
@@ -129,7 +138,7 @@ def main():
         _, dx, dy = door_near(px, py)
         places.append([name, kind, dm(px), dm(py), dm(dx), dm(dy)])
     data = {"w": dm(W), "h": dm(H), "nodes": gnode, "roads": roads, "names": names, "types": ROAD_TYPES,
-            "buildings": buildings, "green": green, "water": water, "rivers": rivers, "rails": rails,
+            "buildings": buildings, "bkinds": bkinds, "green": green, "water": water, "rivers": rivers, "rails": rails,
             "pois": pois, "places": places, "bar": [dm(hx), dm(hy)], "door": [dm(best[1]), dm(best[2])]}
     with open(out, "w", encoding="utf-8") as f:
         if out.endswith(".json"):  # per il gioco Phaser (game/src/data/map.json): JSON puro, importato dal codice
