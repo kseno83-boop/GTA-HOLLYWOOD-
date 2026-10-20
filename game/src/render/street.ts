@@ -6,7 +6,7 @@ import { NX, NY, WW, WH, roads, green, water, rivers, rails, buildings, DOOR, SI
 import { V, PAT, worldXf } from "./view";
 import { SPOTS } from "../world/poi";
 import { drawDehorsGround, drawDehorsTop, drawDehorsGlow } from "./dehors";
-import { LIGHTS, person, vehicle, drawFx, drawBullets, drawLights, pedPose } from "./sprites";
+import { LIGHTS, person, vehicle, drawFx, drawBullets, drawLights, pedPose, wreckOverlay, drawParts } from "./sprites";
 
 function pathPts(p: number[]) { const ctx = V.ctx; ctx.beginPath(); ctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]); }
 function roadPath(r: Road) { const ctx = V.ctx; ctx.beginPath(); ctx.moveTo(NX[r.ids[0]], NY[r.ids[0]]); for (let i = 1; i < r.ids.length; i++) ctx.lineTo(NX[r.ids[i]], NY[r.ids[i]]); }
@@ -41,11 +41,11 @@ export function drawOut() {
   ctx.lineWidth = .18; for (const q of SPOTS) { if (q.dx < vx0 || q.dx > vx1 || q.dy < vy0 || q.dy > vy1) continue; ctx.strokeStyle = q.col; ctx.globalAlpha = .3 + .3 * pulse; ctx.beginPath(); ctx.arc(q.dx, q.dy, .9 + pulse * .2, 0, 7); ctx.stroke(); }
   ctx.globalAlpha = 1;
   drawDehorsGround();
-  LIGHTS.length = 0; for (const c of cars) if (c.x > vx0 && c.x < vx1 && c.y > vy0 && c.y < vy1) vehicle(c, nt > .3);
+  LIGHTS.length = 0; for (const c of cars) if (c.x > vx0 && c.x < vx1 && c.y > vy0 && c.y < vy1) { vehicle(c, nt > .3); if (c.wreck) wreckOverlay(c); }
   for (const p of peds) if (p.st === "dead") person(p, "dead");
   for (const p of peds) if (p.st !== "dead") person(p, pedPose(p));
   if (!P.car) person(Object.assign(PLOOK, { x: P.x, y: P.y, a: P.a, anim: P.anim, flash: P.flash }), P.seat >= 0 && !(P.flash > 0) ? "sit" : "gun");
-  drawBullets();
+  drawBullets(); drawParts();
   drawDehorsTop(nt);
   // edifici in pseudo-3D: tetti proiettati verso la camera come in GTA2
   const CH = Math.max(55, 1300 / S), list = buildings.filter(b => b.x1 > vx0 && b.x0 < vx1 && b.y1 > vy0 && b.y0 < vy1);

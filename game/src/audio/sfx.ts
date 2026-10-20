@@ -45,5 +45,7 @@ export const sfx = {
   bell(vol: number, n: number) { for (let i = 0; i < n; i++) { const d = i * 1.7; tone(392, 2.6, { vol: .16 * vol, delay: d, a: .004 }); tone(784, 1.6, { vol: .07 * vol, delay: d }); tone(1176, .9, { vol: .035 * vol, delay: d }); tone(196, 3, { vol: .06 * vol, delay: d }); } },
   alarm() { for (let i = 0; i < 8; i++) tone(i % 2 ? 960 : 1250, .24, { type: "square", vol: .05, delay: i * .25 }); },
   cash() { tone(1568, .12, { type: "triangle", vol: .1 }); tone(2093, .3, { type: "triangle", vol: .09, delay: .09 }); noiseHit(.08, { f: 5000, q: 2, vol: .15 }); },
+  explode() { noiseHit(1.6, { type: "lowpass", f: 700, vol: 1.2 }); noiseHit(.5, { f: 2200, q: .7, vol: .5 }); tone(60, 1.2, { type: "sawtooth", vol: .4, to: 25 }); tone(110, .5, { type: "triangle", vol: .4, to: 35 }); },
+  ding() { tone(R(1800, 2400), .08, { type: "square", vol: .03 }); noiseHit(.04, { f: 3500, q: 3, vol: .12 }); },
   blip() { tone(R(520, 640), .03, { type: "square", vol: .025 }); },
 };

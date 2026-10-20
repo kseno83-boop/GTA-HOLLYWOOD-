@@ -86,8 +86,23 @@ const out = process.argv[2] || ".";
     return { count: SPOTS.length, robbed, healed: P.hp === 100 }; });
   await p.evaluate(() => { const { P, SPOTS, G } = window.__gta, q = SPOTS.find(q => q.name === "BASILICA DI SAN MAGNO"); P.x = q.dx; P.y = q.dy + 4; G.camX = P.x; G.camY = P.y; G.hour = 21.5; });
   await p.waitForTimeout(1500); await p.screenshot({ path: path.join(out, "san_magno.png") });
-  console.log(JSON.stringify({ street, rules, testmode, dehors, bar, dialog, npcOut, poi, errs }, null, 1));
-  const ok = !errs.length && testmode.panelOpen && testmode.invuln && testmode.heatWithNoPolice === 0 && testmode.scene === "out" && rules.passante === 2 && rules.banda === 3 && rules.agente === 4 && (rules.stelle === 0 || rules.dispatch >= 8) && street.wrongWay === 0 && dehors.seated > 0 && dehors.pushedOffTable && dehors.traffic.cars === 0 && dehors.traffic.passed > 0 && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned && poi.count >= 38 && poi.robbed.money >= 800 && poi.robbed.heat >= 3 && poi.healed;
+  // Olona: in auto non si attraversa fuori dai ponti; mezzo distrutto: fuoco, esplosione, pompieri chiamati
+  const tgt = await p.evaluate(() => { const { waterAt, map } = window.__gta; for (let y = 200; y < 1100; y += 7) for (let x = 700; x < 1050; x++) if (waterAt(x, y) && waterAt(x + 3, y)) {
+    let near = false; for (let k = 0; k < map.NX.length; k++) if (Math.abs(map.NX[k] - x) < 30 && Math.abs(map.NY[k] - y) < 30) { near = true; break; } if (!near) return { x, y }; break; } return null; });
+  await p.evaluate(t => { const { P, cars, G, TEST, map } = window.__gta; TEST.noPolice = true; G.heat = 0; const c = { type: "car", x: t.x - 9, y: t.y, a: 0, v: 0, col: "#e0303f", prev: 0, next: 1, road: map.roads[0], lane: 1, honkT: 0, insT: 0, bub: "", bubT: 0, wheelie: 0 };
+    cars.push(c); P.car = c; P.x = c.x; P.y = c.y; G.camX = P.x; G.camY = P.y; }, tgt);
+  await p.keyboard.down("KeyW"); await p.waitForTimeout(4000); await p.keyboard.up("KeyW");
+  const river = await p.evaluate(t => ({ water: t, carX: window.__gta.P.x, blocked: window.__gta.P.x < t.x }), tgt);
+  await p.evaluate(() => { const { P, cars, G, damageVeh, dehors } = window.__gta; P.car = null; const pw = dehors.toWorld(-1, 6.05), w = dehors.toWorld(-9, 6.05); P.x = pw.x; P.y = pw.y; G.camX = P.x; G.camY = P.y;
+    const c = { type: "car", x: w.x, y: w.y, a: 0, v: 0, col: "#2f6fd0", prev: 0, next: 1, road: window.__gta.map.roads[0], lane: 1, honkT: 0, insT: 0, bub: "", bubT: 0, wheelie: 0 };
+    cars.push(c); window.__c = c; damageVeh(c, 999, false); });
+  await p.waitForTimeout(1200); await p.screenshot({ path: path.join(out, "auto_in_fiamme.png") });
+  await until(() => window.__c.wreck, null, 30000);
+  const fire = await p.evaluate(() => ({ wreck: window.__c.wreck, heat: window.__gta.G.heat, fireJob: window.__gta.jobs.some(j => j.kind === "fire") }));
+  await until(() => window.__gta.jobs.some(j => j.kind === "fire" && j.unit), null, 30000).catch(() => {});
+  fire.truck = await p.evaluate(() => window.__gta.jobs.some(j => j.kind === "fire" && j.unit && j.unit.type === "fire"));
+  console.log(JSON.stringify({ street, rules, testmode, dehors, bar, dialog, npcOut, poi, river, fire, errs }, null, 1));
+  const ok = !errs.length && testmode.panelOpen && testmode.invuln && testmode.heatWithNoPolice === 0 && testmode.scene === "out" && rules.passante === 2 && rules.banda === 3 && rules.agente === 4 && (rules.stelle === 0 || rules.dispatch >= 8) && street.wrongWay === 0 && dehors.seated > 0 && dehors.pushedOffTable && dehors.traffic.cars === 0 && dehors.traffic.passed > 0 && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned && poi.count >= 38 && poi.robbed.money >= 800 && poi.robbed.heat >= 3 && poi.healed && river.blocked && fire.wreck && fire.heat === 0 && fire.fireJob && fire.truck;
   console.log(ok ? "OK" : "FALLITO");
   await b.close(); process.exit(ok ? 0 : 1);
 })();

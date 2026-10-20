@@ -6,6 +6,7 @@ import { sfx } from "../audio/sfx";
 import { LINES } from "./bar";
 import { VT } from "./traffic";
 import { nearestSpot } from "../world/poi";
+import { report } from "./emergency";
 
 /** Livelli di ricercato: Polizia Locale → Polizia di Stato → Carabinieri → Carabinieri+Polizia → reparti speciali. */
 export const LEVELS = ["", "POLIZIA LOCALE", "POLIZIA DI STATO", "CARABINIERI", "CARABINIERI + POLIZIA", "REPARTI SPECIALI"];
@@ -36,7 +37,7 @@ export function spawnGangs() { for (const q of PLACES) if (q.kind === "rival") f
 function pedTarget(p: Ped): [number, number] { const ax = NX[p.prev], ay = NY[p.prev], bx = NX[p.next], by = NY[p.next], L = hyp(bx - ax, by - ay) || 1;
   const off = p.road.car ? (p.road.w / 2 + 1.3) * p.side : p.j * Math.min(1, p.road.w / 2 - .4);
   return [bx - (by - ay) / L * off, by + (bx - ax) / L * off]; }
-export function panic(x: number, y: number, r: number) { if (Math.random() < .4) sfx.scream(); for (const p of peds) if (!p.cop && p.st !== "dead" && hyp(p.x - x, p.y - y) < r) { p.st = "flee"; p.t = R(6, 10); p.spd = R(4.5, 5.8); if (Math.random() < .3) { p.bub = pick(["Aiuto!", "Scappa!", "Chiamate i carabinieri!", "Oh madonna!"]); p.bubT = 2; } } }
+export function panic(x: number, y: number, r: number) { if (Math.random() < .4) sfx.scream(); for (const p of peds) if (!p.cop && !p.crew && p.st !== "dead" && hyp(p.x - x, p.y - y) < r) { p.st = "flee"; p.t = R(6, 10); p.spd = R(4.5, 5.8); if (Math.random() < .3) { p.bub = pick(["Aiuto!", "Scappa!", "Chiamate i carabinieri!", "Oh madonna!"]); p.bubT = 2; } } }
 // un reato pesa meno se nessuno vede; la prima stella fa partire la chiamata, gli agenti arrivano dopo qualche secondo
 export function crime(v: number) { if (TEST.noPolice) { G.heat = 0; return; } const seen = peds.some(p => p.st !== "dead" && !p.cop && hyp(p.x - P.x, p.y - P.y) < 25), s0 = stars();
   G.heat = Math.min(5.5, G.heat + v * (seen ? 1 : .3)); G.calm = 0; if (s0 === 0 && stars() > 0) G.dispatch = R(8, 12); }
@@ -46,10 +47,11 @@ function backHome(arrest = false) { G.heat = 0; P.bust = 0; if (P.car) { P.car.v
   P.x = q ? q.dx : DOOR.x; P.y = q ? q.dy : DOOR.y; G.camX = P.x; G.camY = P.y; for (let i = peds.length - 1; i >= 0; i--) if (peds[i].cop) peds.splice(i, 1); }
 function wasted() { say("SEI MORTO", 3); sfx.groan(); P.hp = 100; backHome(); }
 function busted() { say("ARRESTATO!", 3); sfx.whistle(2); P.money = Math.floor(P.money / 2); backHome(true); }
-export function kill(p: Ped, dx = 0, dy = 0) { if (p.st === "dead") return; p.st = "dead"; sfx.hit(); p.bub = ""; p.a = Math.atan2(dy, dx) + Math.PI;
+/** blame = il giocatore ne è responsabile (conta come reato). */
+export function kill(p: Ped, dx = 0, dy = 0, blame = true) { if (p.st === "dead") return; p.st = "dead"; sfx.hit(); p.bub = ""; p.a = Math.atan2(dy, dx) + Math.PI;
   blood.push({ x: p.x + dx * .4, y: p.y + dy * .4, r: .15, R: R(.6, 1), pool: true });
   for (let i = 0; i < 7; i++) { const k = R(.3, 2.2); blood.push({ x: p.x + dx * k + R(-.4, .4), y: p.y + dy * k + R(-.4, .4), r: R(.05, .2) }); }
-  while (blood.length > 160) blood.shift(); crime(p.cop ? .9 : .45); panic(p.x, p.y, 30); }
+  while (blood.length > 160) blood.shift(); if (blame) crime(p.cop ? .9 : .45); panic(p.x, p.y, 30); if (G.scene === "out") report("medic", p.x, p.y); }
 /** Colpo d'arma da fuoco: all'esterno nessuno muore al primo colpo (passanti 2, banda 3, agenti 4). */
 export function shootPed(p: Ped, dx: number, dy: number) { if (TEST.oneShot) return kill(p, dx, dy); if (p.hp === undefined) p.hp = p.cop ? 100 : p.keep ? 75 : 50; p.hp -= 25; if (p.hp <= 0) return kill(p, dx, dy);
   p.x += dx * .35; p.y += dy * .35; pushOut(p, .32); sfx.hit(); blood.push({ x: p.x + R(-.3, .3), y: p.y + R(-.3, .3), r: R(.08, .18) });
@@ -63,7 +65,7 @@ export function insultNear(x: number, y: number, lines = INSULTS) { let best = 1
 
 /** I pedoni si fanno da parte quando un mezzo in movimento sta per arrivargli addosso (in centro le strade sono strette). */
 function dodge(p: Ped) {
-  for (const v of cars) { const sp = Math.abs(v.v); if (sp < 1.5 || (!v.ai && v !== P.car) || Math.abs(v.x - p.x) > 14 || Math.abs(v.y - p.y) > 14) continue;
+  for (const v of cars) { const sp = Math.abs(v.v); if (sp < 1.5 || (!v.ai && v !== P.car && v.mode !== "resp") || Math.abs(v.x - p.x) > 14 || Math.abs(v.y - p.y) > 14) continue;
     const ca = Math.cos(v.a), sa = Math.sin(v.a), rx = p.x - v.x, ry = p.y - v.y, f = (rx * ca + ry * sa) * Math.sign(v.v), l = -rx * sa + ry * ca, W = VT[v.type].W / 2 + .6;
     if (f < VT[v.type].L / 2 - .5 || f > 4 + sp * .9 || Math.abs(l) > W) continue;
     const side = l === 0 ? (Math.random() < .5 ? -1 : 1) : Math.sign(l), k = side * (W + .35) - l;
@@ -90,7 +92,7 @@ export function updPeds(dt: number) {
     else if (p.st === "loiter") { p.mv = hyp(p.hx! - p.x, p.hy! - p.y) > .4;
       if (p.mv) { tx = p.hx!; ty = p.hy!; } else if (p.seat !== undefined) { p.x = p.hx!; p.y = p.hy!; p.a += angDiff(p.a, p.seat) * Math.min(1, dt * 6);
         if (!(p.bubT > 0) && Math.random() < dt / 14) { p.bub = pick(LINES); p.bubT = 2.2; } continue; } else { const dp = hyp(P.x - p.x, P.y - p.y);
-        if (dp < 9 && G.scene === "out" && !p.npc) { p.a += angDiff(p.a, Math.atan2(P.y - p.y, P.x - p.x)) * Math.min(1, dt * 6); if (!(p.bubT > 0) && Math.random() < dt * .35) { p.bub = pick(["Che vuoi?", "Questo è territorio nostro", "Torna all'Hollywood", "Occhio a te", "Sparisci"]); p.bubT = 2.2; } }
+        if (dp < 9 && G.scene === "out" && !p.npc && !p.crew) { p.a += angDiff(p.a, Math.atan2(P.y - p.y, P.x - p.x)) * Math.min(1, dt * 6); if (!(p.bubT > 0) && Math.random() < dt * .35) { p.bub = pick(["Che vuoi?", "Questo è territorio nostro", "Torna all'Hollywood", "Occhio a te", "Sparisci"]); p.bubT = 2.2; } }
         continue; } }
     else if (p.st === "idle") { p.t -= dt; if (p.t <= 0) p.st = "walk"; continue; }
     else { [tx, ty] = pedTarget(p); if (hyp(tx - p.x, ty - p.y) < .5) { const opts = adj[p.next].filter(e => e.n !== p.prev), e = pick(opts.length ? opts : adj[p.next]);

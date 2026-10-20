@@ -6,6 +6,7 @@ import { R, clamp, pick, hyp, angDiff, rnd } from "../core/util";
 import { NX, NY, adj, roads, pushOut, solidAt, type Edge, type Road } from "../world/map";
 import { sfx } from "../audio/sfx";
 import { inDehorsZone } from "../world/dehors";
+import { waterAt } from "../world/river";
 import { stars, makePed, snap, crime, hurt, insultNear, copLook, INSULTS } from "./peds";
 
 export interface VehSpec { L: number; W: number; cruise: number; max: number; acc: number; bike?: boolean }
@@ -36,7 +37,7 @@ export function boxDist(e: { x: number; y: number }, c: Vehicle) { const T = VT[
 export function boxPush(e: { x: number; y: number }, c: Vehicle, pad: number) { const T = VT[c.type], [f, l, ca, sa] = boxLocal(e, c), hl = T.L / 2 + pad, hw = T.W / 2 + pad;
   if (Math.abs(f) >= hl || Math.abs(l) >= hw) return false; const pf = hl - Math.abs(f), pl = hw - Math.abs(l);
   if (pf < pl) { const s = Math.sign(f) || 1; e.x += ca * pf * s; e.y += sa * pf * s; } else { const s = Math.sign(l) || 1; e.x -= sa * pl * s; e.y += ca * pl * s; } return true; }
-export function nearVeh() { let best = 1.4, c: Vehicle | null = null; for (const o of cars) { if (Math.abs(o.x - P.x) > 10 || Math.abs(o.y - P.y) > 10) continue; const d = boxDist(P, o); if (d < best) { best = d; c = o; } } return c; }
+export function nearVeh() { let best = 1.4, c: Vehicle | null = null; for (const o of cars) { if (o.wreck || o.fire !== undefined || Math.abs(o.x - P.x) > 10 || Math.abs(o.y - P.y) > 10) continue; const d = boxDist(P, o); if (d < best) { best = d; c = o; } } return c; }
 export function crashBike(v: Vehicle) { v.ai = false; v.v = 0; v.wheelie = 0; if (v.rider) makePed(v.x + 1, v.y, Object.assign({}, v.rider, { st: "flee", t: 5, spd: 5, bub: "Ma sei fuori?!", bubT: 2.5 } as Partial<Ped>)); v.rider = null; crime(.3); }
 function spawnVeh(type: VehType, o: Partial<Vehicle> = {}, anywhere = false) {
   const T = VT[type], [hw, hh] = viewHalf(), permit = o.permit ?? type !== "car";
@@ -55,7 +56,8 @@ function chase(v: Vehicle, dt: number) { const T = VT[v.type], d = hyp(P.x - v.x
     return; }
   const da = angDiff(v.a, Math.atan2(P.y - v.y, P.x - v.x)), want = clamp(d * .8, 6, T.max * .65) * (Math.abs(da) > 1.2 ? .4 : 1);
   v.v += clamp(want - v.v, -T.acc * 2 * dt, T.acc * dt); v.a += clamp(da, -1, 1) * Math.min(1, dt * (1.5 + v.v * .3));
-  v.x += Math.cos(v.a) * v.v * dt; v.y += Math.sin(v.a) * v.v * dt;
+  const ox = v.x, oy = v.y; v.x += Math.cos(v.a) * v.v * dt; v.y += Math.sin(v.a) * v.v * dt;
+  if (waterAt(v.x + Math.cos(v.a) * 2, v.y + Math.sin(v.a) * 2) || waterAt(v.x, v.y)) { v.x = ox; v.y = oy; v.v *= .3; v.stuckT = (v.stuckT || 0) + dt; if (v.stuckT > 1.5) { v.a += Math.PI / 2; v.stuckT = 0; } }
   const f = { x: v.x + Math.cos(v.a) * 1.4, y: v.y + Math.sin(v.a) * 1.4 }, b = { x: v.x - Math.cos(v.a) * 1.4, y: v.y - Math.sin(v.a) * 1.4 };
   if (+pushOut(f, .95) | +pushOut(b, .95)) { v.x = (f.x + b.x) / 2; v.y = (f.y + b.y) / 2; v.v *= .6; v.stuckT = (v.stuckT || 0) + dt; if (v.stuckT > 2) { v.a += Math.PI / 2; v.stuckT = 0; } } }
 

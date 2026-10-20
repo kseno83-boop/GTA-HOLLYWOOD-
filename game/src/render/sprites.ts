@@ -1,6 +1,6 @@
 // ---------- Sprite procedurali dei personaggi e dei mezzi (stile Hotline Miami) ----------
 // Contorno nero, vista dall'alto, pose: walk/run/gun/sit/drink/cheer/dead/idle.
-import { G, P, PLOOK, blood, shells, bullets, type Body, type Look, type Ped, type Vehicle } from "../core/state";
+import { G, P, PLOOK, blood, shells, bullets, parts, scorch, type Body, type Look, type Ped, type Vehicle } from "../core/state";
 import { K } from "../core/util";
 import { VT } from "../sim/traffic";
 import { V } from "./view";
@@ -87,7 +87,21 @@ export function drawLights(nt: number) { const ctx = V.ctx; ctx.globalCompositeO
   ctx.globalCompositeOperation = "source-over"; }
 export function pedPose(p: Ped): Pose { return p.st === "dead" ? "dead" : p.st === "loiter" && !p.mv && p.seat !== undefined ? "sit" : p.st === "idle" || (p.st === "loiter" && !p.mv) ? "idle" : p.st === "flee" || p.st === "chase" ? "run" : "walk"; }
 export function drawFx() { const ctx = V.ctx;
+  ctx.fillStyle = "rgba(12,8,10,.55)"; for (const s of scorch) { ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(s.x + s.r * .2, s.y - s.r * .15, s.r * .6, 0, 7); ctx.fill(); }
   for (const b of blood) { ctx.fillStyle = b.pool ? "#5c0711" : "#7d0b17"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill();
     if (b.pool) { ctx.fillStyle = "#9c1022"; ctx.beginPath(); ctx.arc(b.x - b.r * .25, b.y - b.r * .25, b.r * .45, 0, 7); ctx.fill(); } }
   ctx.fillStyle = "#e8b839"; for (const s of shells) { ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.r); ctx.fillRect(-.06, -.03, .12, .06); ctx.restore(); } }
 export function drawBullets() { const ctx = V.ctx; ctx.lineCap = "round"; for (const b of bullets) { ctx.strokeStyle = "rgba(255,240,140,.9)"; ctx.lineWidth = .12; ctx.beginPath(); ctx.moveTo(b.px, b.py); ctx.lineTo(b.x, b.y); ctx.stroke(); } }
+/** Rottame bruciato: carrozzeria annerita sopra il disegno del mezzo. */
+export function wreckOverlay(c: Vehicle) { const ctx = V.ctx, T = VT[c.type]; ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
+  ctx.fillStyle = "rgba(18,14,14,.82)"; ctx.beginPath(); ctx.roundRect(-T.L / 2, -T.W / 2, T.L, T.W, T.bike ? .2 : .4); ctx.fill();
+  ctx.fillStyle = "rgba(255,110,40,.35)"; for (const [x, y] of [[-.3, -.2], [.8, .3], [-1.2, .25]]) if (Math.abs(x) < T.L / 2) ctx.fillRect(x, y * T.W, .25, .2); ctx.restore(); }
+/** Fumo, fiamme, getti d'acqua e lampi delle esplosioni; le fiamme illuminano attorno. */
+export function drawParts() { const ctx = V.ctx;
+  for (const q of parts) { const f = q.t / q.T;
+    if (q.k === 0) { const g = 60 + 40 * f | 0; ctx.fillStyle = `rgba(${g},${g},${g + 8},${.55 * (1 - f)})`; ctx.beginPath(); ctx.arc(q.x, q.y, q.r * (1 + f * 1.6), 0, 7); ctx.fill(); }
+    else if (q.k === 1) { ctx.fillStyle = f < .3 ? "#fff3b0" : f < .6 ? "#ffb02e" : `rgba(230,60,20,${1 - f})`; ctx.beginPath(); ctx.arc(q.x, q.y, q.r * (1 - f * .5), 0, 7); ctx.fill(); }
+    else if (q.k === 2) { ctx.fillStyle = `rgba(150,210,255,${.8 * (1 - f)})`; ctx.fillRect(q.x - q.r / 2, q.y - q.r / 2, q.r, q.r); }
+    else { ctx.fillStyle = `rgba(255,250,220,${1 - f})`; ctx.beginPath(); ctx.arc(q.x, q.y, q.r * (2 + f * 4), 0, 7); ctx.fill(); }
+    if (q.k === 1 && Math.random() < .08) LIGHTS.push({ x: q.x, y: q.y, k: "255,120,30", r: 6 }); }
+  for (const q of parts) if (q.k === 3 && q.t < .1) LIGHTS.push({ x: q.x, y: q.y, k: "255,200,120", r: 18 }); }

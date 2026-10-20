@@ -5,7 +5,7 @@ import { G, P, peds, cars } from "./core/state";
 import { TOUCH } from "./core/util";
 import { DOOR, roads, NX, NY } from "./world/map";
 import { parkCars, VT } from "./sim/traffic";
-import { spawnGangs, shootPed, crime, stars, hurt } from "./sim/peds";
+import { spawnGangs, shootPed, crime, stars, hurt, kill } from "./sim/peds";
 import { guests } from "./sim/bar";
 import { F, scoreLine } from "./sim/football";
 import { PERSONAGGI } from "./characters";
@@ -19,6 +19,8 @@ import { bindDom } from "./ui/dom";
 import { TEST } from "./core/state";
 import { SPOTS, isOpen } from "./world/poi";
 import { spotNear, spotAction } from "./sim/poi";
+import { damageVeh, jobs } from "./sim/emergency";
+import { waterAt } from "./world/river";
 import { toWorld, toLocal, TABLES, EDGE, U0, U1 } from "./world/dehors";
 
 if (TOUCH) document.documentElement.classList.add("touch");
@@ -43,6 +45,6 @@ async function boot() {
   });
   window.addEventListener("resize", () => { measure(); game.scale.setZoom(1 / G.dpr); game.scale.resize(Math.round(G.cw * G.dpr), Math.round(G.ch * G.dpr)); });
   // accesso per i test automatici (tools/smoke_test.js)
-  Object.assign(window, { __gta: { game, G, P, peds, cars, guests, VT, DOOR, F, scoreLine, PERSONAGGI, D, inServizio, staff, shootPed, crime, stars, hurt, TEST, SPOTS, isOpen, spotNear, spotAction, dehors: { toWorld, toLocal, TABLES, EDGE, U0, U1 }, map: { roads, NX, NY } } });
+  Object.assign(window, { __gta: { game, G, P, peds, cars, guests, VT, DOOR, F, scoreLine, PERSONAGGI, D, inServizio, staff, shootPed, crime, stars, hurt, TEST, SPOTS, isOpen, spotNear, spotAction, damageVeh, jobs, waterAt, kill, dehors: { toWorld, toLocal, TABLES, EDGE, U0, U1 }, map: { roads, NX, NY } } });
 }
 boot();

@@ -26,6 +26,8 @@ export interface Ped extends Body {
   hp?: number;
   /** Si sta scansando per far passare un mezzo: tempo rimasto e punto dove si sposta. */
   dodgeT?: number; gx?: number; gy?: number;
+  /** Paramedico o pompiere sceso da un mezzo di soccorso (vedi sim/emergency.ts). */
+  crew?: "medic" | "fire";
 }
 export type VehType = "car" | "ztl" | "police" | "ambulance" | "fire" | "truck" | "rider" | "maranza" | "scooter";
 export interface Vehicle {
@@ -35,6 +37,10 @@ export interface Vehicle {
   kind?: string; mode?: string | null; siren?: boolean; lights?: boolean; deployed?: boolean; inLane?: boolean;
   hazard?: boolean; ghost?: number; blockT?: number; stuckT?: number; dist?: number; ztlOnly?: boolean;
   rider?: Look | null; box?: string;
+  /** Danni (sim/emergency.ts): punti vita, secondi all'esplosione mentre brucia, rottame e fiamme residue, ultimo danno dal giocatore. */
+  hp?: number; fire?: number; wreck?: boolean; burn?: number; byP?: boolean;
+  /** Mezzo di soccorso diretto a un intervento: percorso (nodi del grafo), squadra a terra. */
+  path?: number[]; pi?: number; crew?: Ped[];
 }
 export type Scene = "out" | "bar";
 
@@ -67,6 +73,9 @@ export const cars: Vehicle[] = [];
 export const bullets: { x: number; y: number; vx: number; vy: number; life: number; px: number; py: number }[] = [];
 export const blood: { x: number; y: number; r: number; R?: number; pool?: boolean }[] = [];
 export const shells: { x: number; y: number; vx: number; vy: number; r: number; t: number }[] = [];
+/** Particelle di fumo (k 0), fuoco (1), acqua degli idranti (2) e lampi delle esplosioni (3); bruciature sull'asfalto. */
+export const parts: { x: number; y: number; vx: number; vy: number; t: number; T: number; k: number; r: number }[] = [];
+export const scorch: { x: number; y: number; r: number }[] = [];
 /** Tasti premuti per codice fisico (KeyW, ShiftLeft...). */
 export const keys: Record<string, boolean> = {};
 export const mouse = { x: 0, y: 0, down: false };

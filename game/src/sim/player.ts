@@ -10,6 +10,8 @@ import { enterBar } from "./bar";
 import { talkTarget, talk } from "../characters/runtime";
 import { presSeatNear, sitPlayer, standPlayer } from "./dehors";
 import { spotNear, spotAction } from "./poi";
+import { damageVeh } from "./emergency";
+import { waterAt } from "../world/river";
 
 export function inputVec(): [number, number] { if (joy.on) return [joy.dx, joy.dy];
   const x = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0), y = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0);
@@ -44,14 +46,17 @@ export function updPlayer(dt: number) {
     else { thr = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0); steer = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0); }
     c.v += thr * (thr * c.v < 0 ? T.acc * 1.5 : T.acc) * dt; c.v = clamp(c.v, -T.max * .25, T.max * (TEST.fast ? 1.6 : 1)); c.v *= 1 - (thr ? .25 : 1.1) * dt; if (keys.Space) c.v *= 1 - 3 * dt;
     c.a += c.v / (T.L * .75) * Math.tan(steer * .55) * dt;
-    c.x += Math.cos(c.a) * c.v * dt; c.y += Math.sin(c.a) * c.v * dt;
+    const ox = c.x, oy = c.y; c.x += Math.cos(c.a) * c.v * dt; c.y += Math.sin(c.a) * c.v * dt;
     const k = Math.max(0, T.L / 2 - 1), rr = Math.min(.95, T.W / 2 + .05), f = { x: c.x + Math.cos(c.a) * k, y: c.y + Math.sin(c.a) * k }, b = { x: c.x - Math.cos(c.a) * k, y: c.y - Math.sin(c.a) * k };
     const hf = !TEST.ghost && pushOut(f, rr), hb = !TEST.ghost && pushOut(b, rr), sp0 = Math.abs(c.v);
-    if (hf || hb) { c.x = (f.x + b.x) / 2; c.y = (f.y + b.y) / 2; if (sp0 > 7) { G.shake = .3; sfx.crash(); if (sp0 > 12) hurt((sp0 - 12) * 2.5); } c.v *= sp0 > 7 ? -.3 : .93; }
+    if (hf || hb) { c.x = (f.x + b.x) / 2; c.y = (f.y + b.y) / 2; if (sp0 > 7) { G.shake = .3; sfx.crash(); damageVeh(c, (sp0 - 6) * 4, true); if (sp0 > 12) hurt((sp0 - 12) * 2.5); } c.v *= sp0 > 7 ? -.3 : .93; }
+    // l'Olona si attraversa solo sui ponti (world/river.ts)
+    const nx = Math.cos(c.a) * (T.L / 2 + .2), ny = Math.sin(c.a) * (T.L / 2 + .2);
+    if (!TEST.ghost && (waterAt(c.x + nx, c.y + ny) || waterAt(c.x - nx, c.y - ny) || waterAt(c.x, c.y))) { c.x = ox; c.y = oy; if (sp0 > 7) { G.shake = .2; sfx.crash(); } c.v *= -.25; }
     let hitV = null;
     for (const o of cars) { if (o === c || Math.abs(o.x - c.x) > 16 || Math.abs(o.y - c.y) > 16) continue;
       for (const s of [-1, 0, 1]) { const pt = { x: c.x + Math.cos(c.a) * s * k, y: c.y + Math.sin(c.a) * s * k }, ox = pt.x, oy = pt.y; if (boxPush(pt, o, rr)) { c.x += pt.x - ox; c.y += pt.y - oy; hitV = o; } } }
-    if (hitV) { if (sp0 > 7) { G.shake = .3; sfx.crash(); if (VT[hitV.type].bike && hitV.rider) crashBike(hitV); else if (hitV.ai) { hitV.v = 0; hitV.bub = pick(["Ma sei scemo?!", "La mia macchina!!", "Chiamo i vigili!"]); hitV.bubT = 2.5; crime(.3); } } c.v *= sp0 > 7 ? -.3 : .85; }
+    if (hitV) { if (sp0 > 7) { G.shake = .3; sfx.crash(); damageVeh(c, (sp0 - 6) * 3, true); damageVeh(hitV, (sp0 - 6) * 4, true); if (VT[hitV.type].bike && hitV.rider) crashBike(hitV); else if (hitV.ai) { hitV.v = 0; hitV.bub = pick(["Ma sei scemo?!", "La mia macchina!!", "Chiamo i vigili!"]); hitV.bubT = 2.5; crime(.3); } } c.v *= sp0 > 7 ? -.3 : .85; }
     for (const p of peds) if (p.st !== "dead" && sp0 > 4 && boxDist(p, c) < .25) { if (T.bike) { if (p.st !== "flee") { p.st = "flee"; p.t = 4; p.spd = 5; p.bub = pick(INSULTS); p.bubT = 2; } } else kill(p, Math.cos(c.a), Math.sin(c.a)); }
     P.x = c.x; P.y = c.y; P.a = c.a; return; }
   // seduto al tavolo presidenziale: ci si alza muovendosi (o con E)
@@ -64,7 +69,8 @@ export function updPlayer(dt: number) {
 export function updBullets(dt: number) {
   for (let i = bullets.length - 1; i >= 0; i--) { const b = bullets[i]; let dead = (b.life -= dt) <= 0; b.px = b.x; b.py = b.y;
     for (let s = 0; s < 4 && !dead; s++) { b.x += b.vx * dt / 4; b.y += b.vy * dt / 4; if (solidAt(b.x, b.y)) dead = true;
-      for (const p of peds) if (p.st !== "dead" && hyp(p.x - b.x, p.y - b.y) < .45) { shootPed(p, b.vx / 80, b.vy / 80); dead = true; break; } }
+      for (const p of peds) if (p.st !== "dead" && hyp(p.x - b.x, p.y - b.y) < .45) { shootPed(p, b.vx / 80, b.vy / 80); dead = true; break; }
+      if (!dead) for (const c of cars) if (Math.abs(c.x - b.x) < 7 && Math.abs(c.y - b.y) < 7 && boxDist(b, c) < .05) { damageVeh(c, 10, true); sfx.ding(); dead = true; break; } }
     if (dead) bullets.splice(i, 1); }
   for (const s of shells) if (s.t > 0) { s.t -= dt; s.x += s.vx * dt; s.y += s.vy * dt; s.r += dt * 20; }
   for (const b of blood) if (b.pool && b.r! < b.R!) b.r += dt * .35; }
