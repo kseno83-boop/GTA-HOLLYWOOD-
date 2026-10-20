@@ -99,7 +99,7 @@ export function enterBar() { if (barTarget(G.hour) === 0) { say("L'Hollywood è 
   for (const f of barHooks.onEnter) f();
   for (let i = 0; i < barTarget(G.hour) - 2; i++) newGuest(true); say("BAR HOLLYWOOD", 2); }
 export function updBar(dt: number) {
-  const [ix, iy] = inputVec(), sp = 4.6; P.x += ix * sp * dt; P.y += iy * sp * dt; P.cool -= dt; P.moving = !!(ix || iy);
+  const [ix, iy] = inputVec(), sp = 6; P.x += ix * sp * dt; P.y += iy * sp * dt; P.cool -= dt; P.moving = !!(ix || iy);
   if (P.moving) { P.anim += sp * dt * 4.5; if (TOUCH) P.a += angDiff(P.a, Math.atan2(iy, ix)) * Math.min(1, dt * 12); }
   if (!TOUCH) { const [wx, wy] = screenToWorld(mouse.x, mouse.y); P.a = Math.atan2(wy - P.y, wx - P.x); }
   for (const [x, y, w, h] of OBST) { const cx = clamp(P.x, x, x + w), cy = clamp(P.y, y, y + h), d = hyp(P.x - cx, P.y - cy);

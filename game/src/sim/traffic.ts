@@ -6,7 +6,7 @@ import { R, clamp, pick, hyp, angDiff, rnd } from "../core/util";
 import { NX, NY, adj, roads, pushOut, solidAt, type Edge, type Road } from "../world/map";
 import { sfx } from "../audio/sfx";
 import { inDehorsZone } from "../world/dehors";
-import { makePed, snap, crime, hurt, insultNear, copLook, INSULTS } from "./peds";
+import { stars, makePed, snap, crime, hurt, insultNear, copLook, INSULTS } from "./peds";
 
 export interface VehSpec { L: number; W: number; cruise: number; max: number; acc: number; bike?: boolean }
 export const VT: Record<VehType, VehSpec> = { car: { L: 4.3, W: 1.9, cruise: 10, max: 32, acc: 12 }, ztl: { L: 4.3, W: 1.9, cruise: 4.5, max: 30, acc: 11 }, police: { L: 4.6, W: 1.95, cruise: 8, max: 34, acc: 13 },
@@ -51,7 +51,7 @@ function laneOff(v: Vehicle) { const r = v.road; if (VT[v.type].bike) return (in
 /** Volante all'inseguimento: punta il giocatore, se è a piedi e vicino si ferma e fa scendere due agenti. */
 function chase(v: Vehicle, dt: number) { const T = VT[v.type], d = hyp(P.x - v.x, P.y - v.y);
   if (!P.car && d < 9) { v.v = Math.max(0, v.v - 25 * dt); if (v.v < .5 && !v.deployed) { v.deployed = true; v.mode = null; v.ai = false; v.inLane = true; v.lights = true; v.siren = false;
-      for (const s of [-1, 1]) makePed(v.x - Math.sin(v.a) * s * 1.6, v.y + Math.cos(v.a) * s * 1.6, Object.assign({ cop: true, st: "chase", spd: 5 + Math.ceil(G.heat) * .5 } as Partial<Ped>, copLook())); }
+      for (const s of [-1, 1]) makePed(v.x - Math.sin(v.a) * s * 1.6, v.y + Math.cos(v.a) * s * 1.6, Object.assign({ cop: true, st: "chase", spd: 5 + stars() * .5 } as Partial<Ped>, copLook())); }
     return; }
   const da = angDiff(v.a, Math.atan2(P.y - v.y, P.x - v.x)), want = clamp(d * .8, 6, T.max * .65) * (Math.abs(da) > 1.2 ? .4 : 1);
   v.v += clamp(want - v.v, -T.acc * 2 * dt, T.acc * dt); v.a += clamp(da, -1, 1) * Math.min(1, dt * (1.5 + v.v * .3));
@@ -66,7 +66,7 @@ export function updVeh(dt: number) {
   if (n("car") < Math.round(3 + 9 * activity(h))) spawnVeh("car", {}, init);
   else if (n("ztl") < 1 && h >= 7 && h < 20 && Math.random() < dt * .03) spawnVeh("ztl", { ztlOnly: true, col: pick(["#c9ccd6", "#2b2b33", "#8a93a0"]) }, init);
   else if (n("patrol") < (eve ? (h >= 21 || h < 1 ? 2 : 1) : 0)) spawnVeh("police", { kind: "patrol" }, init);
-  else if (n("chase") < (G.heat >= 2 ? Math.min(3, Math.ceil(G.heat) - 1) : 0)) spawnVeh("police", { kind: "chase", mode: "chase", siren: true });
+  else if (n("chase") < (stars() >= 2 && G.dispatch <= 0 ? Math.min(3, stars() - 1) : 0)) spawnVeh("police", { kind: "chase", mode: "chase", siren: true });
   else if (n("rider") < Math.round(1 + 3 * Math.max(Math.exp(-((h - 13) ** 2) / 2), Math.exp(-((h - 20.5) ** 2) / 3)))) spawnVeh("rider", {}, init);
   else if (n("maranza") + n("scooter") < (h >= 15 || h < 2 ? 4 : 1)) spawnVeh(Math.random() < .5 ? "maranza" : "scooter", {}, init);
   else if (night && n("truck") < 1 && Math.random() < dt / 90) spawnVeh("truck", { lane: 0, hazard: true, col: "#d8d4cc" });
@@ -75,9 +75,9 @@ export function updVeh(dt: number) {
   for (let i = cars.length - 1; i >= 0; i--) { const v = cars[i]; if (v === P.car) continue; const T = VT[v.type];
     if (v.bubT > 0) v.bubT -= dt; v.honkT -= dt; v.insT -= dt;
     if (v.tmp && (Math.abs(v.x - P.x) > hw + 90 || Math.abs(v.y - P.y) > hh + 90)) { cars.splice(i, 1); continue; }
-    if (v.mode === "chase") { if (G.heat === 0) { v.mode = null; v.siren = false; snap(v); v.ai = true; } else { chase(v, dt); continue; } }
+    if (v.mode === "chase") { if (stars() === 0) { v.mode = null; v.siren = false; snap(v); v.ai = true; } else { chase(v, dt); continue; } }
     if (!v.ai) continue;
-    if (v.type === "police" && G.heat > 0 && !v.deployed && hyp(v.x - P.x, v.y - P.y) < 50) { v.mode = "chase"; v.siren = true; continue; }
+    if (v.type === "police" && stars() > 0 && G.dispatch <= 0 && !v.deployed && hyp(v.x - P.x, v.y - P.y) < 50) { v.mode = "chase"; v.siren = true; continue; }
     const ax = NX[v.prev], ay = NY[v.prev], bx = NX[v.next], by = NY[v.next], L = hyp(bx - ax, by - ay) || 1, off = laneOff(v);
     const tx = bx - (by - ay) / L * off, ty = by + (bx - ax) / L * off;
     if (hyp(tx - v.x, ty - v.y) < Math.max(1.6, v.v * .3)) {

@@ -36,6 +36,11 @@ const out = process.argv[2] || ".";
   await minutes(20);
   dehors.traffic = await p.evaluate(() => { clearInterval(window.__iv); return window.__intr; });
   dehors.pushedOffTable = await p.evaluate(() => { const { P, dehors } = window.__gta, t = dehors.TABLES[1], c = dehors.toWorld(t.u, t.n); return Math.hypot(P.x - c.x, P.y - c.y) > .5; });
+  // regole di combattimento e polizia: passante 2 colpi, banda 3, agente 4; stelle intere; agenti 8–12 s dopo la prima stella
+  const rules = await p.evaluate(() => { const g = window.__gta, ped = g.peds.find(p => !p.cop && !p.keep && p.st !== "dead"), gang = g.peds.find(p => p.gang && p.st !== "dead");
+    const hits = p => { let n = 0; while (p.st !== "dead" && n < 10) { g.shootPed(p, 1, 0); n++; } return n; };
+    const r = { passante: hits(ped), banda: hits(gang), agente: hits({ ...ped, cop: true, st: "chase", hp: undefined }) };
+    g.G.heat = 0; g.G.dispatch = 0; g.crime(1.2); r.stelle = g.stars(); r.dispatch = +g.G.dispatch.toFixed(1); g.G.heat = 0; return r; });
   // personaggi di prova: uno al bancone, uno davanti al Maramao
   await p.evaluate(() => window.__gta.PERSONAGGI.push(
     { id: "prova", nome: "Personaggio di prova", posto: "bancone", aspetto: { shirt: "#ffd166" }, squadra: "MILAN",
@@ -60,8 +65,8 @@ const out = process.argv[2] || ".";
   // esci e trova il personaggio in strada
   await p.evaluate(() => { const { P } = window.__gta; P.x = 4.2; P.y = 19.6; }); await minutes(1);
   const npcOut = await p.evaluate(() => { const { peds, G } = window.__gta, n = peds.find(p => p.npc === "fuori"); return { scene: G.scene, spawned: !!n }; });
-  console.log(JSON.stringify({ street, dehors, bar, dialog, npcOut, errs }, null, 1));
-  const ok = !errs.length && street.wrongWay === 0 && dehors.seated > 0 && dehors.pushedOffTable && dehors.traffic.cars === 0 && dehors.traffic.passed > 0 && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned;
+  console.log(JSON.stringify({ street, rules, dehors, bar, dialog, npcOut, errs }, null, 1));
+  const ok = !errs.length && rules.passante === 2 && rules.banda === 3 && rules.agente === 4 && (rules.stelle === 0 || rules.dispatch >= 8) && street.wrongWay === 0 && dehors.seated > 0 && dehors.pushedOffTable && dehors.traffic.cars === 0 && dehors.traffic.passed > 0 && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned;
   console.log(ok ? "OK" : "FALLITO");
   await b.close(); process.exit(ok ? 0 : 1);
 })();

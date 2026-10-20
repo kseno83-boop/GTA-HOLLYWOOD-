@@ -5,7 +5,7 @@ import { G, P, peds, cars } from "./core/state";
 import { TOUCH } from "./core/util";
 import { DOOR, roads, NX, NY } from "./world/map";
 import { parkCars, VT } from "./sim/traffic";
-import { spawnGangs } from "./sim/peds";
+import { spawnGangs, shootPed, crime, stars } from "./sim/peds";
 import { guests } from "./sim/bar";
 import { F, scoreLine } from "./sim/football";
 import { PERSONAGGI } from "./characters";
@@ -40,6 +40,6 @@ async function boot() {
   });
   window.addEventListener("resize", () => { measure(); game.scale.setZoom(1 / G.dpr); game.scale.resize(Math.round(G.cw * G.dpr), Math.round(G.ch * G.dpr)); });
   // accesso per i test automatici (tools/smoke_test.js)
-  Object.assign(window, { __gta: { game, G, P, peds, cars, guests, VT, DOOR, F, scoreLine, PERSONAGGI, D, inServizio, staff, dehors: { toWorld, toLocal, TABLES, EDGE, U0, U1 }, map: { roads, NX, NY } } });
+  Object.assign(window, { __gta: { game, G, P, peds, cars, guests, VT, DOOR, F, scoreLine, PERSONAGGI, D, inServizio, staff, shootPed, crime, stars, dehors: { toWorld, toLocal, TABLES, EDGE, U0, U1 }, map: { roads, NX, NY } } });
 }
 boot();

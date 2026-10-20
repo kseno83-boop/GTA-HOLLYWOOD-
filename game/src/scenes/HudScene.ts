@@ -6,7 +6,7 @@ import { G, P, peds, cars, keys, mouse, joy } from "../core/state";
 import { K, hyp, TOUCH } from "../core/util";
 import { DOOR, PLACES, placeNear } from "../world/map";
 import { F, phase, scoreLine, clockLine, nextKick } from "../sim/football";
-import { LEVELS } from "../sim/peds";
+import { LEVELS, stars as nStars } from "../sim/peds";
 import { STEAL, nearVeh } from "../sim/traffic";
 import { action } from "../sim/player";
 import { skipHour } from "../sim/clock";
@@ -90,9 +90,9 @@ export class HudScene extends Phaser.Scene {
     const ts = cw < 500 ? 20 : 26, title = G.scene === "bar" ? "BAR HOLLYWOOD" : (G.street || "Legnano").toUpperCase();
     this.title.set(title, pad, top + 26, ts, "#fff3fb", Math.sin(now / 700) * .025, [-2 / ts, 2 / ts, 2 / ts, -1 / ts]);
     // orologio, stelle del ricercato, salute
-    const hh = Math.floor(G.hour) % 24, mm = Math.floor((G.hour % 1) * 60); let stars = ""; for (let i = 0; i < 5; i++) stars += i < Math.ceil(G.heat) ? "★" : "☆";
+    const hh = Math.floor(G.hour) % 24, mm = Math.floor((G.hour % 1) * 60); let stars = ""; for (let i = 0; i < 5; i++) stars += i < nStars() ? "★" : "☆";
     setT(T.clock, `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}   ${stars}`).setPosition(pad, top + 52);
-    setT(T.level, LEVELS[Math.ceil(G.heat)]).setPosition(pad + 160, top + 52).setVisible(G.heat > 0);
+    setT(T.level, LEVELS[nStars()]).setPosition(pad + 160, top + 52).setVisible(nStars() > 0);
     g.fillStyle(col(K)).fillRect(pad + 2, top + 82, 124, 12); g.fillStyle(0x3a1530).fillRect(pad, top + 80, 124, 12);
     g.fillStyle(col(P.hurtT > 0 ? "#ffffff" : P.hp > 35 ? "#ff2e88" : "#ff4d4d")).fillRect(pad, top + 80, 124 * Math.max(0, P.hp) / 100, 12);
     T.tv.setVisible(!!(out && match && phase(match) !== "PRE")); if (T.tv.visible) setT(T.tv, `HOLLYWOOD TV · ${scoreLine(match!)} · ${clockLine(match!)}`).setPosition(pad, top + 112);

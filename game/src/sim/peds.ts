@@ -10,7 +10,9 @@ import { VT } from "./traffic";
 export const LEVELS = ["", "POLIZIA LOCALE", "POLIZIA DI STATO", "CARABINIERI", "CARABINIERI + POLIZIA", "REPARTI SPECIALI"];
 export const COPLOOK: (Partial<Look> | null)[] = [null, { shirt: "#1f3b73", pants: "#141b33", cap: "#f2f2f2" }, { shirt: "#2f57b0", pants: "#1a2a55", cap: "#1a2a55" }, { shirt: "#15151a", pants: "#15151a", cap: "#15151a", stripes: "#c1121f" },
   { shirt: "#15151a", pants: "#15151a", cap: "#15151a", stripes: "#c1121f" }, { shirt: "#2b3326", pants: "#1d211a", cap: "#0b0b0b" }];
-export const copLook = () => COPLOOK[clamp(Math.ceil(G.heat), 1, 5)]!;
+/** Stelle intere del ricercato (heat è continuo, la prima stella arriva dopo un po' di reati). */
+export const stars = () => Math.min(5, Math.floor(G.heat));
+export const copLook = () => COPLOOK[clamp(stars(), 1, 5)]!;
 
 /** Aggancia un'entità al lato del grafo stradale più vicino. */
 export function snap<T extends { x: number; y: number }>(o: T) { const n = nearestNode(o.x, o.y), e = pick(adj[n]); return Object.assign(o, { prev: n, next: e.n, road: e.r }); }
@@ -23,7 +25,7 @@ function spawnPed(cop: boolean, anywhere: boolean) {
   for (let t = 0; t < 30; t++) { const n = Math.floor(Math.random() * NX.length), dx = Math.abs(NX[n] - P.x), dy = Math.abs(NY[n] - P.y);
     const inView = dx < hw + 4 && dy < hh + 4; if ((!anywhere && inView) || dx > hw + 55 || dy > hh + 55 || !adj[n].length) continue;
     const e = pick(adj[n]), p = look({ x: NX[n], y: NY[n], a: 0, prev: n, next: e.n, road: e.r, side: Math.random() < .5 ? 1 : -1, j: R(-.7, .7),
-      spd: cop ? 5 + Math.ceil(G.heat) * .5 : R(1.1, 1.6), cop, st: (cop ? "chase" : "walk") as Ped["st"], t: 0, stuck: 0, bub: "", bubT: 0 }) as Ped;
+      spd: cop ? 5 + stars() * .5 : R(1.1, 1.6), cop, st: (cop ? "chase" : "walk") as Ped["st"], t: 0, stuck: 0, bub: "", bubT: 0 }) as Ped;
     if (cop) Object.assign(p, copLook()); else if (Math.random() < .25) p.stripes = "#111";
     peds.push(p); return p; } }
 /** Tre membri di banda davanti a ogni bar rivale. */
@@ -34,7 +36,9 @@ function pedTarget(p: Ped): [number, number] { const ax = NX[p.prev], ay = NY[p.
   const off = p.road.car ? (p.road.w / 2 + 1.3) * p.side : p.j * Math.min(1, p.road.w / 2 - .4);
   return [bx - (by - ay) / L * off, by + (bx - ax) / L * off]; }
 export function panic(x: number, y: number, r: number) { if (Math.random() < .4) sfx.scream(); for (const p of peds) if (!p.cop && p.st !== "dead" && hyp(p.x - x, p.y - y) < r) { p.st = "flee"; p.t = R(6, 10); p.spd = R(4.5, 5.8); if (Math.random() < .3) { p.bub = pick(["Aiuto!", "Scappa!", "Chiamate i carabinieri!", "Oh madonna!"]); p.bubT = 2; } } }
-export function crime(v: number) { G.heat = Math.min(5, G.heat + v); G.calm = 0; }
+// un reato pesa meno se nessuno vede; la prima stella fa partire la chiamata, gli agenti arrivano dopo qualche secondo
+export function crime(v: number) { const seen = peds.some(p => p.st !== "dead" && !p.cop && hyp(p.x - P.x, p.y - P.y) < 25), s0 = stars();
+  G.heat = Math.min(5.5, G.heat + v * (seen ? 1 : .3)); G.calm = 0; if (s0 === 0 && stars() > 0) G.dispatch = R(8, 12); }
 export function hurt(v: number) { P.hp -= v; P.hurtT = .3; if (P.hp <= 0) wasted(); }
 function backHome() { G.heat = 0; P.bust = 0; if (P.car) { P.car.v = 0; P.car = null; } P.x = DOOR.x; P.y = DOOR.y; for (let i = peds.length - 1; i >= 0; i--) if (peds[i].cop) peds.splice(i, 1); }
 function wasted() { say("SEI MORTO", 3); sfx.groan(); P.hp = 100; backHome(); }
@@ -42,7 +46,12 @@ function busted() { say("ARRESTATO!", 3); sfx.whistle(2); backHome(); }
 export function kill(p: Ped, dx = 0, dy = 0) { if (p.st === "dead") return; p.st = "dead"; sfx.hit(); p.bub = ""; p.a = Math.atan2(dy, dx) + Math.PI;
   blood.push({ x: p.x + dx * .4, y: p.y + dy * .4, r: .15, R: R(.6, 1), pool: true });
   for (let i = 0; i < 7; i++) { const k = R(.3, 2.2); blood.push({ x: p.x + dx * k + R(-.4, .4), y: p.y + dy * k + R(-.4, .4), r: R(.05, .2) }); }
-  while (blood.length > 160) blood.shift(); crime(p.cop ? 1 : .6); panic(p.x, p.y, 30); }
+  while (blood.length > 160) blood.shift(); crime(p.cop ? .9 : .45); panic(p.x, p.y, 30); }
+/** Colpo d'arma da fuoco: all'esterno nessuno muore al primo colpo (passanti 2, banda 3, agenti 4). */
+export function shootPed(p: Ped, dx: number, dy: number) { if (p.hp === undefined) p.hp = p.cop ? 100 : p.keep ? 75 : 50; p.hp -= 25; if (p.hp <= 0) return kill(p, dx, dy);
+  p.x += dx * .35; p.y += dy * .35; pushOut(p, .32); sfx.hit(); blood.push({ x: p.x + R(-.3, .3), y: p.y + R(-.3, .3), r: R(.08, .18) });
+  p.bub = pick(p.cop ? ["Agente ferito!", "Fermo!"] : ["Ahia!", "Mi ha colpito!", "Aiuto!"]); p.bubT = 1.8; panic(p.x, p.y, 30);
+  if (p.cop) crime(.3); else { p.st = "flee"; p.t = R(8, 12); p.spd = R(4.5, 6); crime(.2); } }
 const INSULTS = ["Vai piano, pirla!", "Scendi da quella bici!", "Ma va' a lavurà!", "Siamo in centro, deficiente!", "Rallenta!", "Ma guarda questo...", "Ti sei bevuto il cervello?", "Prima o poi ti stendi!"];
 export { INSULTS };
 /** Il passante più vicino a (x, y) dice una delle frasi. */
@@ -60,16 +69,16 @@ function dodge(p: Ped) {
     p.a = Math.atan2(p.gy - p.y, p.gx - p.x); return; }
 }
 export function updPeds(dt: number) {
-  const [hw, hh] = viewHalf(), want = Math.round((22 + 40 * activity(G.hour)) * Math.min(1.4, (hw * hh) / 4000 + .5)), cops = Math.min(10, Math.ceil(G.heat) * 2);
+  const [hw, hh] = viewHalf(), want = Math.round((22 + 40 * activity(G.hour)) * Math.min(1.4, (hw * hh) / 4000 + .5)), cops = G.dispatch > 0 ? 0 : Math.min(10, stars() * 2);
   let nc = 0, np = 0; for (const p of peds) if (p.st !== "dead" && !p.keep) p.cop ? nc++ : np++;
   if (np < want) spawnPed(false, !G.started); if (nc < cops) spawnPed(true, false);
   for (let i = peds.length - 1; i >= 0; i--) { const p = peds[i]; if (!p) continue;
-    if (!p.keep && (Math.abs(p.x - P.x) > hw + 75 || Math.abs(p.y - P.y) > hh + 75 || (p.cop && G.heat === 0 && Math.abs(p.x - P.x) > hw))) { peds.splice(i, 1); continue; }
+    if (!p.keep && (Math.abs(p.x - P.x) > hw + 75 || Math.abs(p.y - P.y) > hh + 75 || (p.cop && stars() === 0 && Math.abs(p.x - P.x) > hw))) { peds.splice(i, 1); continue; }
     if (p.bubT > 0) p.bubT -= dt; if (p.st === "dead") continue;
     let tx: number, ty: number, sp = p.spd;
     if ((p.st === "walk" || p.st === "idle") && !(p.dodgeT! > 0)) dodge(p);
     if (p.dodgeT! > 0) { p.dodgeT! -= dt; tx = p.gx!; ty = p.gy!; sp = 2.8; if (hyp(tx - p.x, ty - p.y) < .15) continue; }
-    else if (p.st === "chase") { if (G.heat === 0) { p.st = "walk"; p.spd = 1.4; continue; } tx = P.x; ty = P.y;
+    else if (p.st === "chase") { if (stars() === 0) { p.st = "walk"; p.spd = 1.4; continue; } tx = P.x; ty = P.y;
       const d = hyp(P.x - p.x, P.y - p.y), car = P.car;
       if (d < (car ? 2.6 : 1.3) && (!car || Math.abs(car.v) < 1.2)) { P.bust += dt; if (!car) hurt(dt * (5 + G.heat * 3)); if (P.bust > 1.5) busted(); }
       if (Math.random() < dt * .15) { p.bub = pick(["Fermo! Polizia!", "Alt!", "Mani in alto!"]); p.bubT = 1.6; } }

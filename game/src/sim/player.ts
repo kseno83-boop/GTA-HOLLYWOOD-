@@ -5,7 +5,7 @@ import { R, clamp, pick, hyp, angDiff, TOUCH } from "../core/util";
 import { pushOut, solidAt, DOOR, placeNear } from "../world/map";
 import { sfx } from "../audio/sfx";
 import { VT, boxDist, boxPush, nearVeh, crashBike } from "./traffic";
-import { makePed, panic, crime, hurt, kill, INSULTS } from "./peds";
+import { makePed, panic, crime, hurt, kill, shootPed, INSULTS } from "./peds";
 import { enterBar } from "./bar";
 import { talkTarget, talk } from "../characters/runtime";
 import { presSeatNear, sitPlayer, standPlayer } from "./dehors";
@@ -20,7 +20,7 @@ export function shoot() { if (P.cool > 0) return; if (G.scene === "bar") { say("
       if (d < best && Math.abs(angDiff(P.a, Math.atan2(p.y - P.y, p.x - P.x))) < .7) { best = d; tgt = p; } } if (tgt) a = P.a = Math.atan2(tgt.y - P.y, tgt.x - P.x); }
   sfx.shot(); bullets.push({ x: P.x + Math.cos(a) * .9, y: P.y + Math.sin(a) * .9, vx: Math.cos(a) * 80, vy: Math.sin(a) * 80, life: .5, px: P.x, py: P.y });
   shells.push({ x: P.x, y: P.y, vx: -Math.sin(a) * R(2, 4) + R(-1, 1), vy: Math.cos(a) * R(2, 4) + R(-1, 1), r: R(0, 3), t: .35 }); if (shells.length > 80) shells.shift();
-  panic(P.x, P.y, 35); crime(.25); }
+  panic(P.x, P.y, 35); crime(.1); }
 /** Tasto E / AZIONE: parla, entra, mangia, ruba o scendi dal mezzo. */
 export function action() {
   const npc = talkTarget(); if (npc) { talk(npc); return; }
@@ -32,7 +32,7 @@ export function action() {
   const q = placeNear(); if (q) { if (q.kind === "food") { if (P.hp < 100) { P.hp = 100; sfx.eat(); say(`${q.name} · SALUTE PIENA`); } else say("Non hai fame adesso.");
     } else { say(`${q.name} · TERRITORIO RIVALE`); for (const p of peds) if (p.gang === q.name && p.st === "loiter" && !p.npc) { p.bub = pick(["Fuori di qui!", "Qui non entri", "Torna all'Hollywood"]); p.bubT = 2; } } return; }
   const c = nearVeh();
-  if (c) { if (c.ai || c.mode || c.rider) { makePed(P.x, P.y, Object.assign({}, c.rider || {}, { st: "flee" as const, t: 6, spd: 5, bub: pick(["Ladro!!", "Fermatelo!", "Il mio mezzo!"]), bubT: 2.5 })); crime(c.type === "police" ? 2 : .5); }
+  if (c) { if (c.ai || c.mode || c.rider) { makePed(P.x, P.y, Object.assign({}, c.rider || {}, { st: "flee" as const, t: 6, spd: 5, bub: pick(["Ladro!!", "Fermatelo!", "Il mio mezzo!"]), bubT: 2.5 })); crime(c.type === "police" ? 1.2 : .35); }
     Object.assign(c, { ai: false, mode: null, siren: false, rider: null, tmp: false, inLane: false, wheelie: 0, hazard: false }); P.car = c; sfx.carDoor(); if (peds.some(p => p.st !== "dead" && hyp(p.x - P.x, p.y - P.y) < 15)) crime(.4); }
 }
 export function updPlayer(dt: number) {
@@ -54,7 +54,7 @@ export function updPlayer(dt: number) {
     P.x = c.x; P.y = c.y; P.a = c.a; return; }
   // seduto al tavolo presidenziale: ci si alza muovendosi (o con E)
   if (P.seat >= 0) { if (!ix && !iy) { P.moving = false; if (mouse.down || touchFire.held) { if (!TOUCH) { const [wx, wy] = screenToWorld(mouse.x, mouse.y); P.a = Math.atan2(wy - P.y, wx - P.x); } shoot(); } return; } standPlayer(); }
-  const run = keys.ShiftLeft || keys.ShiftRight || (joy.on && hyp(ix, iy) > .92), sp = run ? 9 : 5.6;
+  const run = keys.ShiftLeft || keys.ShiftRight || (joy.on && hyp(ix, iy) > .92), sp = run ? 12 : 7.5;
   P.x += ix * sp * dt; P.y += iy * sp * dt; P.moving = !!(ix || iy); if (P.moving) { P.anim += sp * dt * 4.5; if (TOUCH) P.a += angDiff(P.a, Math.atan2(iy, ix)) * Math.min(1, dt * 12); }
   if (!TOUCH) { const [wx, wy] = screenToWorld(mouse.x, mouse.y); P.a = Math.atan2(wy - P.y, wx - P.x); }
   for (const o of cars) if (Math.abs(o.x - P.x) < 9 && Math.abs(o.y - P.y) < 9) boxPush(P, o, .35);
@@ -62,7 +62,7 @@ export function updPlayer(dt: number) {
 export function updBullets(dt: number) {
   for (let i = bullets.length - 1; i >= 0; i--) { const b = bullets[i]; let dead = (b.life -= dt) <= 0; b.px = b.x; b.py = b.y;
     for (let s = 0; s < 4 && !dead; s++) { b.x += b.vx * dt / 4; b.y += b.vy * dt / 4; if (solidAt(b.x, b.y)) dead = true;
-      for (const p of peds) if (p.st !== "dead" && hyp(p.x - b.x, p.y - b.y) < .45) { kill(p, b.vx / 80, b.vy / 80); dead = true; break; } }
+      for (const p of peds) if (p.st !== "dead" && hyp(p.x - b.x, p.y - b.y) < .45) { shootPed(p, b.vx / 80, b.vy / 80); dead = true; break; } }
     if (dead) bullets.splice(i, 1); }
   for (const s of shells) if (s.t > 0) { s.t -= dt; s.x += s.vx * dt; s.y += s.vy * dt; s.r += dt * 20; }
   for (const b of blood) if (b.pool && b.r! < b.R!) b.r += dt * .35; }

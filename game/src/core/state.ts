@@ -22,6 +22,8 @@ export interface Ped extends Body {
   npc?: string;
   /** Cliente seduto nel dehors: angolo verso il tavolo e indice del posto. */
   seat?: number; seatIdx?: number;
+  /** Punti vita (colpi d'arma da fuoco): passanti 50, banda e personaggi fissi 75, agenti 100; 25 a colpo. */
+  hp?: number;
   /** Si sta scansando per far passare un mezzo: tempo rimasto e punto dove si sposta. */
   dodgeT?: number; gx?: number; gy?: number;
 }
@@ -45,7 +47,9 @@ export const P = {
 
 /** Variabili globali di partita (orario, ricercato, camera, messaggi). */
 export const G = {
-  scene: "out" as Scene, hour: 18.5, day: 0, heat: 0, calm: 0, msg: "", msgT: 0, street: "" as string | null, streetT: 0,
+  scene: "out" as Scene, hour: 18.5, day: 0, heat: 0, calm: 0,
+  /** secondi prima che arrivino gli agenti dopo la prima stella */
+  dispatch: 0, msg: "", msgT: 0, street: "" as string | null, streetT: 0,
   /** pixel CSS per metro */
   S: 20, camX: 0, camY: 0, started: false, shake: 0, now: 0,
   /** dimensioni della finestra in pixel CSS e rapporto pixel del dispositivo */

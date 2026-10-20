@@ -5,8 +5,8 @@ import { track } from "../audio/music";
 import { updDialog } from "../characters/runtime";
 
 export function tick(dt: number) {
-  if (G.started) { const h0 = G.hour; G.hour = (G.hour + dt / 60) % 24; if (G.hour < h0) G.day++; checkKick(h0, G.hour); track.t -= dt; P.hurtT -= dt; G.msgT -= dt; G.calm += dt;
-    if (G.calm > 20 && G.heat > 0) { G.heat = Math.max(0, G.heat - 1); G.calm = 10; } }
+  if (G.started) { const h0 = G.hour; G.hour = (G.hour + dt / 60) % 24; if (G.hour < h0) G.day++; checkKick(h0, G.hour); track.t -= dt; P.hurtT -= dt; G.msgT -= dt; G.calm += dt; G.dispatch -= dt;
+    if (G.calm > 12 && G.heat > 0) { G.heat = Math.max(0, G.heat - .5); G.calm = 6; } }
   updMatch(G.started ? dt : 0, dt);
   updDialog(dt);
 }
