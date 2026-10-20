@@ -57,6 +57,8 @@ export const G = {
   /** contatore FPS (tasto F, oppure ?fps nell'indirizzo) */
   showFps: /[?&]fps\b/.test(location.search),
 };
+/** Opzioni della modalità test (pannello col tasto O, vedi ui/testmode.ts). */
+export const TEST = { invuln: false, noPolice: false, rapidFire: false, oneShot: false, fast: false, ghost: false, freezeTime: false, debug: false };
 
 export const peds: Ped[] = [];
 export const cars: Vehicle[] = [];

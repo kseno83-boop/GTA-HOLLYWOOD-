@@ -2,7 +2,8 @@
 // Scena sempre attiva sopra il mondo: scanline e vignettatura, orologio, ricercato, salute, minimappa,
 // partita in TV, suggerimenti, messaggi grandi, dialoghi dei personaggi; raccoglie tastiera, mouse e tocco.
 import Phaser from "phaser";
-import { G, P, peds, cars, keys, mouse, joy } from "../core/state";
+import { G, P, TEST, peds, cars, keys, mouse, joy } from "../core/state";
+import { testActive } from "../ui/testmode";
 import { K, hyp, TOUCH } from "../core/util";
 import { DOOR, PLACES, placeNear } from "../world/map";
 import { F, phase, scoreLine, clockLine, nextKick } from "../sim/football";
@@ -51,7 +52,7 @@ export class HudScene extends Phaser.Scene {
     t("tv", 20, undefined, "#29f2e4").setOrigin(0, .8); t("off", 20, undefined, "#29f2e4").setOrigin(1, .8);
     t("score", 16, DISPLAY, "#fff3fb").setOrigin(0, .8); t("mclock", 16, DISPLAY, "#ffd166").setOrigin(1, .8);
     t("track", 20, undefined, "#ffd166").setOrigin(0, .8); t("hint", 24, undefined, "#29f2e4").setOrigin(.5, .8);
-    t("fps", 18, undefined, "#8ad16b").setOrigin(1, .8); t("who", 18, DISPLAY, "#ff2e88").setOrigin(0, 0); t("say", 24, undefined, "#fff3fb").setOrigin(0, 0);
+    t("fps", 18, undefined, "#8ad16b").setOrigin(1, .8); t("test", 18, undefined, "#ffd166").setOrigin(0, .8); t("dbg", 18, undefined, "#ffd166").setOrigin(1, 1); t("who", 18, DISPLAY, "#ff2e88").setOrigin(0, 0); t("say", 24, undefined, "#fff3fb").setOrigin(0, 0);
     this.goal = new HmText(this); this.msg = new HmText(this);
     this.fit(); this.scale.on("resize", this.fit, this);
     this.bindInput();
@@ -133,6 +134,9 @@ export class HudScene extends Phaser.Scene {
     this.dialog(cw, ch);
     // messaggi grandi (CORSO MAGENTA, ARRESTATO!...)
     if (G.msgT > 0) this.msg.set(G.msg, cw / 2, ch * .3, Math.min(56, cw / 11), G.msg === "ARRESTATO!" || G.msg === "SEI MORTO" ? "#ff4d4d" : "#fff3fb", Math.sin(now / 160) * .06); else this.msg.hide();
+    // modalità test: cartellino e informazioni di debug
+    T.test.setVisible(testActive()); if (T.test.visible) setT(T.test, "MODALITÀ TEST · O").setPosition(pad, top + 132);
+    T.dbg.setVisible(TEST.debug); if (TEST.debug) setT(T.dbg, `${G.scene === "bar" ? "bar" : G.street || "-"}  x ${P.x.toFixed(1)}  y ${P.y.toFixed(1)}\ngiorno ${G.day + 1}  calore ${G.heat.toFixed(2)}  chiamata ${Math.max(0, G.dispatch).toFixed(1)}s\npassanti ${peds.length}  mezzi ${cars.length}`).setPosition(cw - pad, ch - (TOUCH ? 140 : 44));
     T.fps.setVisible(G.showFps); if (G.showFps) setT(T.fps, `${Math.round(this.game.loop.actualFps)} FPS`).setPosition(cw - pad, ch - (TOUCH ? 110 : 20));
     if (joy.on) { f.lineStyle(3, 0x29f2e4, .6).strokeCircle(joy.ox, joy.oy, 50); f.fillStyle(0x29f2e4, .5).fillCircle(joy.ox + joy.dx * 50, joy.oy + joy.dy * 50, 22); }
   }

@@ -3,7 +3,7 @@
 // tavolone da 8 rivolto verso il telo del proiettore sulla parete dell'ingresso, tavolino alto con sgabelli sotto il telo,
 // bancali con led viola, libri e lavagna a est, angolo viola sotto la scala. In fondo un passaggio in pietra con gradini
 // porta ai bagni (porte arancioni) e alla saletta sul retro (tavoli quadrati, tavolo lungo, murale, tenda verde, TV).
-import { G, P, look, say, mouse, touchFire, type Body } from "../core/state";
+import { G, P, TEST, look, say, mouse, touchFire, type Body } from "../core/state";
 import { R, clamp, pick, hyp, angDiff, TOUCH } from "../core/util";
 import { DOOR } from "../world/map";
 import { sfx } from "../audio/sfx";
@@ -99,10 +99,10 @@ export function enterBar() { if (barTarget(G.hour) === 0) { say("L'Hollywood è 
   for (const f of barHooks.onEnter) f();
   for (let i = 0; i < barTarget(G.hour) - 2; i++) newGuest(true); say("BAR HOLLYWOOD", 2); }
 export function updBar(dt: number) {
-  const [ix, iy] = inputVec(), sp = 6; P.x += ix * sp * dt; P.y += iy * sp * dt; P.cool -= dt; P.moving = !!(ix || iy);
+  const [ix, iy] = inputVec(), sp = 6 * (TEST.fast ? 2 : 1); P.x += ix * sp * dt; P.y += iy * sp * dt; P.cool -= dt; P.moving = !!(ix || iy);
   if (P.moving) { P.anim += sp * dt * 4.5; if (TOUCH) P.a += angDiff(P.a, Math.atan2(iy, ix)) * Math.min(1, dt * 12); }
   if (!TOUCH) { const [wx, wy] = screenToWorld(mouse.x, mouse.y); P.a = Math.atan2(wy - P.y, wx - P.x); }
-  for (const [x, y, w, h] of OBST) { const cx = clamp(P.x, x, x + w), cy = clamp(P.y, y, y + h), d = hyp(P.x - cx, P.y - cy);
+  if (!TEST.ghost) for (const [x, y, w, h] of OBST) { const cx = clamp(P.x, x, x + w), cy = clamp(P.y, y, y + h), d = hyp(P.x - cx, P.y - cy);
     if (d < .33) { if (d === 0) P.y = y + h + .33; else { P.x = cx + (P.x - cx) / d * .33; P.y = cy + (P.y - cy) / d * .33; } } }
   if (P.y > BAR_H + .1) { G.scene = "out"; sfx.door(); P.x = DOOR.x; P.y = DOOR.y; P.a = Math.PI / 2; say("CORSO MAGENTA"); return; }
   if (mouse.down || touchFire.held) shoot();

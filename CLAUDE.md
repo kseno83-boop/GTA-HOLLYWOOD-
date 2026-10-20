@@ -29,6 +29,7 @@ python3 tools/osm_export.py centro.osm game/src/data/map.json   # scarica centro
 ```
 Pubblicazione: Artifact con `file_path: game/dist/index.html` e `files: {"music/playlist.js": "game/public/music/playlist.js"}`, url sopra.
 Tasti in gioco: WASD/mouse, E azione/parla, T +1 ora, M audio, N brano, F contatore FPS (anche `?fps` nell'indirizzo).
+**Modalità test** (`game/src/ui/testmode.ts`, tasto **O**, pulsante TEST sul telefono o con `?test`): invulnerabile, niente polizia, fuoco rapido, un colpo uccide, super velocità, fantasma (attraversa muri e tavoli), tempo fermo, info di debug; azioni: salute piena, ±stelle, ore preimpostate, partita adesso, giorno dopo (cambia turno), auto qui, teletrasporto ai locali. Opzioni salvate nel browser (localStorage). Per nuove opzioni: aggiungi una voce a `TEST` in `core/state.ts` e a `SWITCHES`/`ACTIONS`.
 
 ## Scelte fatte con l'utente (non rimettere in discussione)
 - Area: bbox lon 8.9100–8.9260, lat 45.5870–45.5985 (~1,25 × 1,27 km). Dati © OpenStreetMap, ODbL (attribuzione nel gioco).
@@ -58,4 +59,5 @@ Tasti in gioco: WASD/mouse, E azione/parla, T +1 ora, M audio, N brano, F contat
 - Prestazioni: in ambiente headless senza GPU (SwiftShader) la versione Phaser fa ~12–14 fps contro ~31 della vecchia demo: il costo è la composizione GPU emulata (senza disegnare nulla sulla GPU la logica gira a ~37 fps). Su GPU vere dovrebbe essere trascurabile, ma va verificato dall'utente su PC e telefono (tasto F / `?fps`).
 - La tela del mondo va rimessa a filtro NEAREST dopo ogni `refresh()` (Phaser la ricrea col filtro di default, morbido con antialias attivo): vedi `WorldScene`.
 - `render: { maxTextures: 1 }` in `main.ts`: con più texture per lotto lo shader di Phaser confronta float interpolati e con GPU software gli oggetti ruotati venivano disegnati a pezzi.
+- Il vecchio branch `claude/gta-clone-legnano-concept-miik14` (vecchia demo) è stato unito qui il 20/10; lavorare solo su questo branch e sul gioco in `game/`. Non ripubblicare `demo/index.html` sull'artifact: sovrascriverebbe il gioco Phaser.
 - Il progetto "La Bocca del Paese" citato dall'utente non è accessibile da qui.

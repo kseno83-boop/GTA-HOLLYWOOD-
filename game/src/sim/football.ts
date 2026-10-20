@@ -19,6 +19,8 @@ function newMatch(i: number): Match { const [h, a] = FIXTURES[i % FIXTURES.lengt
 /** Durata in minuti di gioco: 5 pre-partita, 45 primo tempo, 15 intervallo, 45 secondo tempo, 10 dopo il fischio. */
 export const phase = (m: Match) => m.tm < 5 ? "PRE" : m.tm < 50 ? "1T" : m.tm < 65 ? "INT" : m.tm < 110 ? "2T" : "FT";
 const minute = (m: Match) => { const p = phase(m); return p === "1T" ? m.tm - 4 : p === "2T" ? m.tm - 19 : p === "FT" ? 90 : p === "INT" ? 45 : 0; };
+/** Modalità test: la prossima partita in calendario comincia adesso. */
+export function startMatchNow() { if (!F.match) { F.match = newMatch(F.fixIdx++); F.match.t = 4; } }
 export const milanLive = () => !!F.match && (F.match.h === "MILAN" || F.match.a === "MILAN") && phase(F.match) !== "FT";
 export const playing = () => !!F.match && (phase(F.match) === "1T" || phase(F.match) === "2T");
 /** Avvia la partita se l'orario è passato da a a b sopra un calcio d'inizio. */

@@ -1,5 +1,5 @@
 // ---------- Passanti, bande e sbirri ----------
-import { G, P, peds, cars, blood, look, activity, say, viewHalf, type Ped, type Look } from "../core/state";
+import { G, P, TEST, peds, cars, blood, look, activity, say, viewHalf, type Ped, type Look } from "../core/state";
 import { R, clamp, pick, hyp, angDiff } from "../core/util";
 import { NX, NY, adj, pushOut, nearestNode, DOOR, PLACES } from "../world/map";
 import { sfx } from "../audio/sfx";
@@ -37,9 +37,9 @@ function pedTarget(p: Ped): [number, number] { const ax = NX[p.prev], ay = NY[p.
   return [bx - (by - ay) / L * off, by + (bx - ax) / L * off]; }
 export function panic(x: number, y: number, r: number) { if (Math.random() < .4) sfx.scream(); for (const p of peds) if (!p.cop && p.st !== "dead" && hyp(p.x - x, p.y - y) < r) { p.st = "flee"; p.t = R(6, 10); p.spd = R(4.5, 5.8); if (Math.random() < .3) { p.bub = pick(["Aiuto!", "Scappa!", "Chiamate i carabinieri!", "Oh madonna!"]); p.bubT = 2; } } }
 // un reato pesa meno se nessuno vede; la prima stella fa partire la chiamata, gli agenti arrivano dopo qualche secondo
-export function crime(v: number) { const seen = peds.some(p => p.st !== "dead" && !p.cop && hyp(p.x - P.x, p.y - P.y) < 25), s0 = stars();
+export function crime(v: number) { if (TEST.noPolice) { G.heat = 0; return; } const seen = peds.some(p => p.st !== "dead" && !p.cop && hyp(p.x - P.x, p.y - P.y) < 25), s0 = stars();
   G.heat = Math.min(5.5, G.heat + v * (seen ? 1 : .3)); G.calm = 0; if (s0 === 0 && stars() > 0) G.dispatch = R(8, 12); }
-export function hurt(v: number) { P.hp -= v; P.hurtT = .3; if (P.hp <= 0) wasted(); }
+export function hurt(v: number) { if (TEST.invuln) return; P.hp -= v; P.hurtT = .3; if (P.hp <= 0) wasted(); }
 function backHome() { G.heat = 0; P.bust = 0; if (P.car) { P.car.v = 0; P.car = null; } P.x = DOOR.x; P.y = DOOR.y; for (let i = peds.length - 1; i >= 0; i--) if (peds[i].cop) peds.splice(i, 1); }
 function wasted() { say("SEI MORTO", 3); sfx.groan(); P.hp = 100; backHome(); }
 function busted() { say("ARRESTATO!", 3); sfx.whistle(2); backHome(); }
@@ -48,7 +48,7 @@ export function kill(p: Ped, dx = 0, dy = 0) { if (p.st === "dead") return; p.st
   for (let i = 0; i < 7; i++) { const k = R(.3, 2.2); blood.push({ x: p.x + dx * k + R(-.4, .4), y: p.y + dy * k + R(-.4, .4), r: R(.05, .2) }); }
   while (blood.length > 160) blood.shift(); crime(p.cop ? .9 : .45); panic(p.x, p.y, 30); }
 /** Colpo d'arma da fuoco: all'esterno nessuno muore al primo colpo (passanti 2, banda 3, agenti 4). */
-export function shootPed(p: Ped, dx: number, dy: number) { if (p.hp === undefined) p.hp = p.cop ? 100 : p.keep ? 75 : 50; p.hp -= 25; if (p.hp <= 0) return kill(p, dx, dy);
+export function shootPed(p: Ped, dx: number, dy: number) { if (TEST.oneShot) return kill(p, dx, dy); if (p.hp === undefined) p.hp = p.cop ? 100 : p.keep ? 75 : 50; p.hp -= 25; if (p.hp <= 0) return kill(p, dx, dy);
   p.x += dx * .35; p.y += dy * .35; pushOut(p, .32); sfx.hit(); blood.push({ x: p.x + R(-.3, .3), y: p.y + R(-.3, .3), r: R(.08, .18) });
   p.bub = pick(p.cop ? ["Agente ferito!", "Fermo!"] : ["Ahia!", "Mi ha colpito!", "Aiuto!"]); p.bubT = 1.8; panic(p.x, p.y, 30);
   if (p.cop) crime(.3); else { p.st = "flee"; p.t = R(8, 12); p.spd = R(4.5, 6); crime(.2); } }

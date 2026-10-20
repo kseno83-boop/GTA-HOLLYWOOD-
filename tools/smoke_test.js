@@ -10,6 +10,7 @@ const out = process.argv[2] || ".";
   const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox", "--enable-unsafe-swiftshader"] });
   const p = await b.newPage({ viewport: { width: 1280, height: 760 } });
   const errs = []; p.on("pageerror", e => errs.push(e.message)); p.on("console", m => { if (m.type() === "error") errs.push(m.text()); });
+  const page_wait = (pg, ms) => pg.waitForTimeout(ms);
   const until = (fn, arg, timeout = 30000) => p.waitForFunction(fn, arg, { timeout, polling: 100 });
   /** aspetta che passino m minuti di gioco */
   const minutes = async m => { const h0 = await p.evaluate(() => window.__gta.G.hour); await until(([h0, m]) => (window.__gta.G.hour - h0 + 24) % 24 >= m / 60, [h0, m], 15000 + m * 5000); };
@@ -41,6 +42,17 @@ const out = process.argv[2] || ".";
     const hits = p => { let n = 0; while (p.st !== "dead" && n < 10) { g.shootPed(p, 1, 0); n++; } return n; };
     const r = { passante: hits(ped), banda: hits(gang), agente: hits({ ...ped, cop: true, st: "chase", hp: undefined }) };
     g.G.heat = 0; g.G.dispatch = 0; g.crime(1.2); r.stelle = g.stars(); r.dispatch = +g.G.dispatch.toFixed(1); g.G.heat = 0; return r; });
+  // modalità test: pannello col tasto O, invulnerabile, niente polizia, teletrasporto al Maramao
+  await key("KeyO");
+  const testmode = await p.evaluate(() => { const panel = document.getElementById("testpanel"), g = window.__gta, r = { panelOpen: !panel.hidden };
+    for (const k of ["invuln", "noPolice"]) { const el = panel.querySelector(`input[data-k=${k}]`); el.click(); }
+    const hp = g.P.hp; g.hurt(50); r.invuln = g.P.hp === hp; g.crime(3); r.heatWithNoPolice = g.G.heat;
+    [...panel.querySelectorAll("button")].find(b => b.textContent.includes("Maramao")).click();
+    return r; });
+  await page_wait(p, 300);
+  Object.assign(testmode, await p.evaluate(() => { const g = window.__gta, panel = document.getElementById("testpanel");
+    const r = { scene: g.G.scene, street: g.G.street }; for (const k of ["invuln", "noPolice"]) panel.querySelector(`input[data-k=${k}]`).click(); return r; }));
+  await p.screenshot({ path: path.join(out, "modalita_test.png") }); await key("KeyO");
   // personaggi di prova: uno al bancone, uno davanti al Maramao
   await p.evaluate(() => window.__gta.PERSONAGGI.push(
     { id: "prova", nome: "Personaggio di prova", posto: "bancone", aspetto: { shirt: "#ffd166" }, squadra: "MILAN",
@@ -59,14 +71,14 @@ const out = process.argv[2] || ".";
   const d1 = await p.evaluate(() => ({ ...window.__gta.D }));
   await key("KeyE"); await key("KeyE");
   const d2 = await p.evaluate(() => ({ ...window.__gta.D }));
-  await key("KeyE"); await key("KeyE");
-  const d3 = await p.evaluate(() => ({ ...window.__gta.D }));
+  // dopo l'ultima battuta il dialogo si chiude (una pressione in più se la battuta sta ancora apparendo)
+  let d3 = d2; for (let i = 0; i < 3 && d3.id; i++) { await key("KeyE"); d3 = await p.evaluate(() => ({ ...window.__gta.D })); }
   const dialog = { opened: d1.id === "prova", second: d2.text === "Seconda battuta.", closedAtEnd: d3.id === "" };
   // esci e trova il personaggio in strada
   await p.evaluate(() => { const { P } = window.__gta; P.x = 4.2; P.y = 19.6; }); await minutes(1);
   const npcOut = await p.evaluate(() => { const { peds, G } = window.__gta, n = peds.find(p => p.npc === "fuori"); return { scene: G.scene, spawned: !!n }; });
-  console.log(JSON.stringify({ street, rules, dehors, bar, dialog, npcOut, errs }, null, 1));
-  const ok = !errs.length && rules.passante === 2 && rules.banda === 3 && rules.agente === 4 && (rules.stelle === 0 || rules.dispatch >= 8) && street.wrongWay === 0 && dehors.seated > 0 && dehors.pushedOffTable && dehors.traffic.cars === 0 && dehors.traffic.passed > 0 && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned;
+  console.log(JSON.stringify({ street, rules, testmode, dehors, bar, dialog, npcOut, errs }, null, 1));
+  const ok = !errs.length && testmode.panelOpen && testmode.invuln && testmode.heatWithNoPolice === 0 && testmode.scene === "out" && rules.passante === 2 && rules.banda === 3 && rules.agente === 4 && (rules.stelle === 0 || rules.dispatch >= 8) && street.wrongWay === 0 && dehors.seated > 0 && dehors.pushedOffTable && dehors.traffic.cars === 0 && dehors.traffic.passed > 0 && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned;
   console.log(ok ? "OK" : "FALLITO");
   await b.close(); process.exit(ok ? 0 : 1);
 })();

@@ -7,7 +7,10 @@ import { action } from "../sim/player";
 const $ = (id: string) => document.getElementById(id)!;
 export function toggleMute() { audio.muted = !audio.muted; $("mute").textContent = audio.muted ? "AUDIO NO" : "AUDIO SÌ"; }
 
+import { bindTestMode } from "./testmode";
+
 export function bindDom() {
+  bindTestMode();
   $("mute").addEventListener("click", toggleMute);
   $("tracks").addEventListener("change", e => { const files = [...((e.target as HTMLInputElement).files || [])];
     addTracks(files.map(f => ({ src: URL.createObjectURL(f), name: f.name.replace(/\.[^.]+$/, "") }))); if (G.started && bgm.paused) nextTrack(); });
