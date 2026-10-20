@@ -77,8 +77,17 @@ const out = process.argv[2] || ".";
   // esci e trova il personaggio in strada
   await p.evaluate(() => { const { P } = window.__gta; P.x = 4.2; P.y = 19.6; }); await minutes(1);
   const npcOut = await p.evaluate(() => { const { peds, G } = window.__gta, n = peds.find(p => p.npc === "fuori"); return { scene: G.scene, spawned: !!n }; });
-  console.log(JSON.stringify({ street, rules, testmode, dehors, bar, dialog, npcOut, errs }, null, 1));
-  const ok = !errs.length && testmode.panelOpen && testmode.invuln && testmode.heatWithNoPolice === 0 && testmode.scene === "out" && rules.passante === 2 && rules.banda === 3 && rules.agente === 4 && (rules.stelle === 0 || rules.dispatch >= 8) && street.wrongWay === 0 && dehors.seated > 0 && dehors.pushedOffTable && dehors.traffic.cars === 0 && dehors.traffic.passed > 0 && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned;
+  // punti d'interesse: rapina in banca (soldi e stelle), farmacia (salute), insegne vicine
+  const poi = await p.evaluate(() => { const { P, G, TEST, SPOTS, spotNear, spotAction } = window.__gta; for (const k in TEST) TEST[k] = false;
+    const at = n => { const q = SPOTS.find(q => q.name === n); P.car = null; P.x = q.dx; P.y = q.dy; return spotNear(); };
+    G.hour = 11; G.heat = 0; const m0 = P.money, bank = at("BANCA DEL CARROCCIO"); if (bank) spotAction(bank);
+    const robbed = { money: P.money - m0, heat: G.heat }; G.heat = 0;
+    P.hp = 40; const ph = at("FARMACIA CENTRALE"); if (ph) spotAction(ph);
+    return { count: SPOTS.length, robbed, healed: P.hp === 100 }; });
+  await p.evaluate(() => { const { P, SPOTS, G } = window.__gta, q = SPOTS.find(q => q.name === "BASILICA DI SAN MAGNO"); P.x = q.dx; P.y = q.dy + 4; G.camX = P.x; G.camY = P.y; G.hour = 21.5; });
+  await p.waitForTimeout(1500); await p.screenshot({ path: path.join(out, "san_magno.png") });
+  console.log(JSON.stringify({ street, rules, testmode, dehors, bar, dialog, npcOut, poi, errs }, null, 1));
+  const ok = !errs.length && testmode.panelOpen && testmode.invuln && testmode.heatWithNoPolice === 0 && testmode.scene === "out" && rules.passante === 2 && rules.banda === 3 && rules.agente === 4 && (rules.stelle === 0 || rules.dispatch >= 8) && street.wrongWay === 0 && dehors.seated > 0 && dehors.pushedOffTable && dehors.traffic.cars === 0 && dehors.traffic.passed > 0 && bar.scene === "bar" && !!bar.match && bar.npcInBar && dialog.opened && dialog.second && dialog.closedAtEnd && npcOut.scene === "out" && npcOut.spawned && poi.count >= 38 && poi.robbed.money >= 800 && poi.robbed.heat >= 3 && poi.healed;
   console.log(ok ? "OK" : "FALLITO");
   await b.close(); process.exit(ok ? 0 : 1);
 })();

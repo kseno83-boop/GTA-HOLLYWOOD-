@@ -5,6 +5,7 @@ import { pick } from "../core/util";
 import { DOOR, PLACES } from "../world/map";
 import { snap } from "../sim/peds";
 import { startMatchNow } from "../sim/football";
+import { spotByName } from "../world/poi";
 
 type Key = keyof typeof TEST;
 const SWITCHES: [Key, string][] = [["invuln", "Invulnerabile"], ["noPolice", "Niente polizia (ricercato sempre a zero)"], ["rapidFire", "Fuoco rapido"],
@@ -20,6 +21,7 @@ function setHour(h: number) { if (h < G.hour) G.day++; G.hour = h; say(`ORE ${Ma
 
 const ACTIONS: [string, () => void][] = [
   ["Salute piena", () => { P.hp = 100; }],
+  ["+500 €", () => { P.money += 500; }],
   ["+1 stella", () => { G.heat = Math.min(5.5, Math.floor(G.heat) + 1); G.dispatch = 0; G.calm = 0; }],
   ["Azzera stelle", clearCops],
   ["Ore 8:00", () => setHour(8)], ["Ore 12:00", () => setHour(12)], ["Ore 20:40", () => setHour(20 + 40 / 60)], ["Ore 23:30", () => setHour(23.5)],
@@ -28,6 +30,7 @@ const ACTIONS: [string, () => void][] = [
   ["Auto qui", () => { if (G.scene !== "out" || P.car) return; const c = snap({ type: "car", x: P.x + Math.cos(P.a) * 3, y: P.y + Math.sin(P.a) * 3, a: P.a, v: 0, col: pick(CARCOL), lane: 1, honkT: 0, insT: 0, bub: "", bubT: 0, wheelie: 0 }) as Vehicle; cars.push(c); }],
   ["→ Hollywood", () => goTo(DOOR.x, DOOR.y, "HOLLYWOOD")],
   ...PLACES.map(q => [`→ ${q.name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}`, () => goTo(q.dx, q.dy, q.name)] as [string, () => void]),
+  ...["COMMISSARIATO", "BANCA DEL CARROCCIO", "GIOIELLERIA DEL CORSO", "STAZIONE", "BASILICA DI SAN MAGNO", "SALA BINGO"].map(n => [`→ ${n.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}`, () => { const q = spotByName(n); goTo(q.dx, q.dy, n); }] as [string, () => void]),
 ];
 
 export function bindTestMode() {

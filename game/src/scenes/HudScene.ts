@@ -15,6 +15,8 @@ import { track, nextTrack } from "../audio/music";
 import { sfx } from "../audio/sfx";
 import { D, talkTarget } from "../characters/runtime";
 import { presSeatNear } from "../sim/dehors";
+import { spotNear, spotHint, euro } from "../sim/poi";
+import { SPOTS } from "../world/poi";
 import { renderPitch } from "../render/pitch";
 import { buildMini, MINI_K } from "../ui/minimap";
 import { mkText, setT, HmText, DISPLAY } from "../ui/text";
@@ -48,7 +50,7 @@ export class HudScene extends Phaser.Scene {
     this.front = this.add.graphics();
     this.title = new HmText(this, DISPLAY, "left");
     const t = (k: string, size: number, font?: string, color?: string) => (this.T[k] = mkText(this, size, font, color));
-    t("clock", 24, undefined, "#ffd166").setOrigin(0, .8); t("level", 18, undefined, "#7aa2ff").setOrigin(0, .8);
+    t("clock", 24, undefined, "#ffd166").setOrigin(0, .8); t("money", 20, undefined, "#7dffb2").setOrigin(0, .8); t("level", 18, undefined, "#7aa2ff").setOrigin(0, .8);
     t("tv", 20, undefined, "#29f2e4").setOrigin(0, .8); t("off", 20, undefined, "#29f2e4").setOrigin(1, .8);
     t("score", 16, DISPLAY, "#fff3fb").setOrigin(0, .8); t("mclock", 16, DISPLAY, "#ffd166").setOrigin(1, .8);
     t("track", 20, undefined, "#ffd166").setOrigin(0, .8); t("hint", 24, undefined, "#29f2e4").setOrigin(.5, .8);
@@ -96,11 +98,13 @@ export class HudScene extends Phaser.Scene {
     setT(T.level, LEVELS[nStars()]).setPosition(pad + 160, top + 52).setVisible(nStars() > 0);
     g.fillStyle(col(K)).fillRect(pad + 2, top + 82, 124, 12); g.fillStyle(0x3a1530).fillRect(pad, top + 80, 124, 12);
     g.fillStyle(col(P.hurtT > 0 ? "#ffffff" : P.hp > 35 ? "#ff2e88" : "#ff4d4d")).fillRect(pad, top + 80, 124 * Math.max(0, P.hp) / 100, 12);
+    setT(T.money, euro(P.money)).setPosition(pad + 136, top + 93);
     T.tv.setVisible(!!(out && match && phase(match) !== "PRE")); if (T.tv.visible) setT(T.tv, `HOLLYWOOD TV · ${scoreLine(match!)} · ${clockLine(match!)}`).setPosition(pad, top + 112);
     // minimappa
     this.mini.setVisible(out);
     if (out) { const mw = Math.min(170, cw * .3), k = mw / this.mini.frame.width, mh = this.mini.frame.height * k, x = cw - mw - pad, y = top, s = k * MINI_K;
       g.fillStyle(0x29f2e4).fillRect(x + 4, y + 4, mw, mh); this.mini.setPosition(x, y).setDisplaySize(mw, mh); f.lineStyle(3, 0xff2e88).strokeRect(x, y, mw, mh);
+      for (const q of SPOTS) f.fillStyle(col(q.col), .85).fillRect(x + q.dx * s - 1.5, y + q.dy * s - 1.5, 3, 3);
       for (const q of PLACES) f.fillStyle(col(q.col)).fillRect(x + q.dx * s - 2.5, y + q.dy * s - 2.5, 5, 5);
       f.fillStyle(0xff2e88).fillRect(x + DOOR.x * s - 3, y + DOOR.y * s - 3, 6, 6);
       f.fillStyle(0x3d6bff); for (const c of cars) if (c.type === "police") f.fillRect(x + c.x * s - 2, y + c.y * s - 2, 4, 4);
@@ -127,7 +131,8 @@ export class HudScene extends Phaser.Scene {
     else if (P.car) hint = Math.abs(P.car.v) > 3 ? "" : `${E} · scendi dall'auto`;
     else if (hyp(P.x - DOOR.x, P.y - DOOR.y) < 3.5) hint = `${E} · entra all'Hollywood`;
     else { const q = placeNear(); if (q) hint = `${E} · ${q.kind === "food" ? "mangia da " + q.name : q.name + " (rivali)"}`;
-      else { const nv = nearVeh(); if (nv) hint = `${E} · ${STEAL[nv.type]}`; } }
+      else { const sp = spotNear(); if (sp) hint = `${E} · ${spotHint(sp)}`;
+        else { const nv = nearVeh(); if (nv) hint = `${E} · ${STEAL[nv.type]}`; } } }
     T.hint.setVisible(!!hint);
     if (hint) { setT(T.hint, hint).setPosition(cw / 2, ch - 40); const w = T.hint.width + 24;
       g.fillStyle(0xff2e88).fillRect(cw / 2 - w / 2 + 4, ch - 60, w, 34); g.fillStyle(0x170c24).fillRect(cw / 2 - w / 2, ch - 64, w, 34); }

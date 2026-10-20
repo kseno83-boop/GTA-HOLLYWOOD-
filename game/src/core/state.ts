@@ -43,6 +43,8 @@ export const P = {
   moving: false, bust: 0,
   /** Seduto al tavolo presidenziale: indice del posto (-1 = in piedi). */
   seat: -1,
+  /** Soldi in tasca (euro): servono per farmacie, bar, bingo e gratta e vinci; si fanno con le rapine. */
+  money: 50,
 };
 
 /** Variabili globali di partita (orario, ricercato, camera, messaggi). */

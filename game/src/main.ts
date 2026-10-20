@@ -17,6 +17,8 @@ import { BarScene } from "./scenes/BarScene";
 import { HudScene } from "./scenes/HudScene";
 import { bindDom } from "./ui/dom";
 import { TEST } from "./core/state";
+import { SPOTS, isOpen } from "./world/poi";
+import { spotNear, spotAction } from "./sim/poi";
 import { toWorld, toLocal, TABLES, EDGE, U0, U1 } from "./world/dehors";
 
 if (TOUCH) document.documentElement.classList.add("touch");
@@ -41,6 +43,6 @@ async function boot() {
   });
   window.addEventListener("resize", () => { measure(); game.scale.setZoom(1 / G.dpr); game.scale.resize(Math.round(G.cw * G.dpr), Math.round(G.ch * G.dpr)); });
   // accesso per i test automatici (tools/smoke_test.js)
-  Object.assign(window, { __gta: { game, G, P, peds, cars, guests, VT, DOOR, F, scoreLine, PERSONAGGI, D, inServizio, staff, shootPed, crime, stars, hurt, TEST, dehors: { toWorld, toLocal, TABLES, EDGE, U0, U1 }, map: { roads, NX, NY } } });
+  Object.assign(window, { __gta: { game, G, P, peds, cars, guests, VT, DOOR, F, scoreLine, PERSONAGGI, D, inServizio, staff, shootPed, crime, stars, hurt, TEST, SPOTS, isOpen, spotNear, spotAction, dehors: { toWorld, toLocal, TABLES, EDGE, U0, U1 }, map: { roads, NX, NY } } });
 }
 boot();

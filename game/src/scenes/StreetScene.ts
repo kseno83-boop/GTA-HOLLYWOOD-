@@ -12,15 +12,21 @@ import { drawOut } from "../render/street";
 import { B2S } from "../render/view";
 import { WorldScene } from "./WorldScene";
 import { mkText, setT, DISPLAY } from "../ui/text";
+import { SPOTS, type Spot } from "../world/poi";
+import { hyp } from "../core/util";
 
 /** Dimensione di base dei testi delle insegne: si scalano invece di ridisegnarli a ogni zoom. */
 const BASE = 40;
+/** Insegne dei punti d'interesse: solo i più vicini al giocatore (entro 32 m). */
+const NLAB = 6, LAB_R = 32;
 
 export class StreetScene extends WorldScene {
   protected readonly where = "out" as const;
   private sign!: Phaser.GameObjects.Text;
   private names: Phaser.GameObjects.Text[] = [];
   private blurKey = "";
+  private labs: Phaser.GameObjects.Text[] = [];
+  private labFor: (Spot | null)[] = [];
   constructor() { super("street"); }
 
   protected createOverlay() {
@@ -28,7 +34,8 @@ export class StreetScene extends WorldScene {
     const glow = (t: Phaser.GameObjects.Text) => { const pad = 40; t.setPadding(pad, pad, pad, pad); return t.setOrigin(.5, (pad + .8 * (t.height - 2 * pad)) / t.height); };
     this.sign = glow(mkText(this, BASE, DISPLAY, "#ff2e88").setText("HOLLYWOOD"));
     this.names = PLACES.map(q => glow(mkText(this, BASE, DISPLAY, q.col).setText(q.name)));
-    this.layer.add([this.sign, ...this.names]);
+    for (let i = 0; i < NLAB; i++) { this.labs.push(glow(mkText(this, BASE, DISPLAY, "#fff").setVisible(false))); this.labFor.push(null); }
+    this.layer.add([this.sign, ...this.names, ...this.labs]);
   }
   protected simulate(dt: number) {
     if (G.started) { updPlayer(dt); updBullets(dt); }
@@ -50,9 +57,13 @@ export class StreetScene extends WorldScene {
     setT(this.sign, "HOLLYWOOD", col);
     if (key !== this.blurKey) { this.blurKey = key;
       this.sign.setShadow(0, 0, "#ff2e88", blur * BASE / fs, false, true);
-      this.names.forEach((t, i) => t.setShadow(0, 0, PLACES[i].col, blur * BASE / fn, false, true)); }
+      this.names.forEach((t, i) => t.setShadow(0, 0, PLACES[i].col, blur * BASE / fn, false, true)); this.labFor.fill(null); }
     const [qx, qy] = this.local(...B2S(SIGN.x, SIGN.y)); this.sign.setPosition(qx, qy - S * 2.2).setScale(fs / BASE);
     PLACES.forEach((q, i) => { const [x, y] = this.local(...B2S(q.x, q.y)); this.names[i].setPosition(x, y - S * 1.6).setScale(fn / BASE); });
+    const near = SPOTS.map(q => [q, hyp(q.dx - P.x, q.dy - P.y)] as [Spot, number]).filter(([, d]) => d < LAB_R).sort((a, b) => a[1] - b[1]).slice(0, NLAB), fl = fn * .8;
+    this.labs.forEach((t, i) => { const e = near[i]; t.setVisible(!!e); if (!e) return; const [q, d] = e;
+      if (this.labFor[i] !== q) { this.labFor[i] = q; setT(t, q.name, q.col); t.setShadow(0, 0, q.col, blur * BASE / fl, false, true); }
+      const [x, y] = this.local(...B2S(q.dx, q.dy)); t.setPosition(x, y - S * 1.3).setScale(fl / BASE).setAlpha(Math.min(1, (LAB_R - d) / 8)); });
     for (const p of peds) if (p.bubT > 0) { const [bx, by] = this.local(...B2S(p.x, p.y)); this.bubbles.add(bx, by - S * .9, p.bub, p.cop); }
     for (const c of cars) if (c.bubT > 0) { const [bx, by] = this.local(...B2S(c.x, c.y)); this.bubbles.add(bx, by - S * 1.4, c.bub); }
   }

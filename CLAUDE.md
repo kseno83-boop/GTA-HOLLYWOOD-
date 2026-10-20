@@ -17,6 +17,7 @@ Il gioco è in `game/` (Phaser 4 + TypeScript + Vite, scelto dall'utente). `demo
 - `game/src/characters/` — personaggi fissi: formato in `types.ts`, elenco `PERSONAGGI` in `index.ts`, turni dietro il bancone in `turni.ts`, istruzioni in `README.md`, messa in scena in `runtime.ts`.
 - `game/src/audio/` — effetti sintetizzati (Web Audio), volumi, colonna sonora. `game/public/music/playlist.js` elenca i brani (file audio esclusi da git: protetti da copyright).
 - `tools/osm_export.py` — OSM → `game/src/data/map.json` (o `demo/map-data.js` se l'output finisce in .js).
+- `tools/osm_poi.py` — punti d'interesse approvati dall'utente (elenco nel file, id OSM) → `game/src/data/poi.json`; logica in `world/poi.ts` (categorie, colori, orari) e `sim/poi.ts` (azioni col tasto E, rapine, folle, campane).
 - `tools/osm_preview.py` — anteprima SVG dell'area (`docs/mappa-area-gioco.svg`); contiene bbox e coordinate dell'Hollywood.
 - `tools/smoke_test.js` — test headless del gioco (errori, renderer, sensi unici, Hollywood, partita, personaggi di prova, screenshot). `tools/smoke_test_demo.js` = vecchia demo.
 
@@ -44,6 +45,8 @@ Tasti in gioco: WASD/mouse, E azione/parla, T +1 ora, M audio, N brano, F contat
 - Motore: Phaser 4 + TypeScript + Vite (Godot eventualmente più avanti, per Steam/console/store).
 - Personaggi: tasto E per parlare, riquadro di dialogo stile Hotline Miami (proposto all'utente, non ancora confermato esplicitamente).
 - Audio sintetizzato con Web Audio (nessun file). Colonna sonora fornita dall'utente: pulsante "Carica i tuoi brani" (file locali) o `game/public/music/`.
+
+- **Punti d'interesse** (approvati in blocco dall'utente, "poi correggo man mano"): 55 posti fra caserme/commissariato/polizia locale, pompieri, stazione, monumenti, cinema/teatro, cibo, gelaterie, bar neutrali, farmacie, banche e gioiellerie (posti veri, **nomi inventati**: Banca del Carroccio, Credito del Guerriero, Gioielleria del Corso, Gioielleria Magenta), Sala Bingo, Tabacchi, distributore, parcheggi, negozi, parchi, piscina. Valori provvisori decisi da me: soldi iniziali 50 €, caffè 1,50 € (+10), farmacia 30 € (salute piena), gelato +50 gratis, bingo 10 € (35% vinci 25), gratta e vinci 2 € (10% 10 €, 1% 100 €), rapina banca 800–1500 € e 3 stelle, gioielleria 300–700 € e 2 stelle (una al giorno per posto, solo in orario di apertura); arresto = metà dei soldi e ripartenza dal comando di polizia più vicino. Folle dalla stazione ogni mezz'ora e da cinema/teatro alle 17 e 22:30, campane di San Magno a ogni ora (7–22).
 
 ## Personaggi (definiti dall'utente)
 - **Proprietari:** **Max** (omaccione alto, capelli bianchi un po' pazzi, sempre in infradito) e **Giada** (bassina, giovane, pallida, capelli neri). Raramente insieme.

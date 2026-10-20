@@ -5,6 +5,7 @@ import { NX, NY, adj, pushOut, nearestNode, DOOR, PLACES } from "../world/map";
 import { sfx } from "../audio/sfx";
 import { LINES } from "./bar";
 import { VT } from "./traffic";
+import { nearestSpot } from "../world/poi";
 
 /** Livelli di ricercato: Polizia Locale → Polizia di Stato → Carabinieri → Carabinieri+Polizia → reparti speciali. */
 export const LEVELS = ["", "POLIZIA LOCALE", "POLIZIA DI STATO", "CARABINIERI", "CARABINIERI + POLIZIA", "REPARTI SPECIALI"];
@@ -40,9 +41,11 @@ export function panic(x: number, y: number, r: number) { if (Math.random() < .4)
 export function crime(v: number) { if (TEST.noPolice) { G.heat = 0; return; } const seen = peds.some(p => p.st !== "dead" && !p.cop && hyp(p.x - P.x, p.y - P.y) < 25), s0 = stars();
   G.heat = Math.min(5.5, G.heat + v * (seen ? 1 : .3)); G.calm = 0; if (s0 === 0 && stars() > 0) G.dispatch = R(8, 12); }
 export function hurt(v: number) { if (TEST.invuln) return; P.hp -= v; P.hurtT = .3; if (P.hp <= 0) wasted(); }
-function backHome() { G.heat = 0; P.bust = 0; if (P.car) { P.car.v = 0; P.car = null; } P.x = DOOR.x; P.y = DOOR.y; for (let i = peds.length - 1; i >= 0; i--) if (peds[i].cop) peds.splice(i, 1); }
+/** Dopo la morte si riparte dall'Hollywood, dopo l'arresto dal comando di polizia più vicino (con multa). */
+function backHome(arrest = false) { G.heat = 0; P.bust = 0; if (P.car) { P.car.v = 0; P.car = null; } const q = arrest ? nearestSpot("police", P.x, P.y) : null;
+  P.x = q ? q.dx : DOOR.x; P.y = q ? q.dy : DOOR.y; G.camX = P.x; G.camY = P.y; for (let i = peds.length - 1; i >= 0; i--) if (peds[i].cop) peds.splice(i, 1); }
 function wasted() { say("SEI MORTO", 3); sfx.groan(); P.hp = 100; backHome(); }
-function busted() { say("ARRESTATO!", 3); sfx.whistle(2); backHome(); }
+function busted() { say("ARRESTATO!", 3); sfx.whistle(2); P.money = Math.floor(P.money / 2); backHome(true); }
 export function kill(p: Ped, dx = 0, dy = 0) { if (p.st === "dead") return; p.st = "dead"; sfx.hit(); p.bub = ""; p.a = Math.atan2(dy, dx) + Math.PI;
   blood.push({ x: p.x + dx * .4, y: p.y + dy * .4, r: .15, R: R(.6, 1), pool: true });
   for (let i = 0; i < 7; i++) { const k = R(.3, 2.2); blood.push({ x: p.x + dx * k + R(-.4, .4), y: p.y + dy * k + R(-.4, .4), r: R(.05, .2) }); }

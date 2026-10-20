@@ -9,6 +9,7 @@ import { makePed, panic, crime, hurt, kill, shootPed, INSULTS } from "./peds";
 import { enterBar } from "./bar";
 import { talkTarget, talk } from "../characters/runtime";
 import { presSeatNear, sitPlayer, standPlayer } from "./dehors";
+import { spotNear, spotAction } from "./poi";
 
 export function inputVec(): [number, number] { if (joy.on) return [joy.dx, joy.dy];
   const x = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0), y = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0);
@@ -21,7 +22,7 @@ export function shoot() { if (P.cool > 0) return; if (G.scene === "bar") { say("
   sfx.shot(); bullets.push({ x: P.x + Math.cos(a) * .9, y: P.y + Math.sin(a) * .9, vx: Math.cos(a) * 80, vy: Math.sin(a) * 80, life: .5, px: P.x, py: P.y });
   shells.push({ x: P.x, y: P.y, vx: -Math.sin(a) * R(2, 4) + R(-1, 1), vy: Math.cos(a) * R(2, 4) + R(-1, 1), r: R(0, 3), t: .35 }); if (shells.length > 80) shells.shift();
   panic(P.x, P.y, 35); crime(.1); }
-/** Tasto E / AZIONE: parla, entra, mangia, ruba o scendi dal mezzo. */
+/** Tasto E / AZIONE: parla, entra, mangia, usa i punti d'interesse (sim/poi.ts), ruba o scendi dal mezzo. */
 export function action() {
   const npc = talkTarget(); if (npc) { talk(npc); return; }
   if (G.scene === "bar") return;
@@ -31,6 +32,7 @@ export function action() {
   if (hyp(P.x - DOOR.x, P.y - DOOR.y) < 3.5) { enterBar(); return; }
   const q = placeNear(); if (q) { if (q.kind === "food") { if (P.hp < 100) { P.hp = 100; sfx.eat(); say(`${q.name} · SALUTE PIENA`); } else say("Non hai fame adesso.");
     } else { say(`${q.name} · TERRITORIO RIVALE`); for (const p of peds) if (p.gang === q.name && p.st === "loiter" && !p.npc) { p.bub = pick(["Fuori di qui!", "Qui non entri", "Torna all'Hollywood"]); p.bubT = 2; } } return; }
+  const s = spotNear(); if (s) { spotAction(s); return; }
   const c = nearVeh();
   if (c) { if (c.ai || c.mode || c.rider) { makePed(P.x, P.y, Object.assign({}, c.rider || {}, { st: "flee" as const, t: 6, spd: 5, bub: pick(["Ladro!!", "Fermatelo!", "Il mio mezzo!"]), bubT: 2.5 })); crime(c.type === "police" ? 1.2 : .35); }
     Object.assign(c, { ai: false, mode: null, siren: false, rider: null, tmp: false, inLane: false, wheelie: 0, hazard: false }); P.car = c; sfx.carDoor(); if (peds.some(p => p.st !== "dead" && hyp(p.x - P.x, p.y - P.y) < 15)) crime(.4); }

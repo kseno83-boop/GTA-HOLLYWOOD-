@@ -41,5 +41,9 @@ export const sfx = {
   eat() { for (let i = 0; i < 4; i++) noiseHit(.07, { f: 2400, q: 3, vol: .25, delay: i * .16 }); tone(660, .15, { vol: .08, delay: .7 }); tone(880, .2, { vol: .08, delay: .82 }); },
   horn() { tone(392, .3, { type: "square", vol: .05 }); tone(494, .3, { type: "square", vol: .04 }); },
   scream() { tone(R(650, 900), .55, { type: "sawtooth", vol: .05, to: R(380, 520), a: .05 }); },
+  /** Campane di San Magno: n rintocchi, volume in base alla distanza. */
+  bell(vol: number, n: number) { for (let i = 0; i < n; i++) { const d = i * 1.7; tone(392, 2.6, { vol: .16 * vol, delay: d, a: .004 }); tone(784, 1.6, { vol: .07 * vol, delay: d }); tone(1176, .9, { vol: .035 * vol, delay: d }); tone(196, 3, { vol: .06 * vol, delay: d }); } },
+  alarm() { for (let i = 0; i < 8; i++) tone(i % 2 ? 960 : 1250, .24, { type: "square", vol: .05, delay: i * .25 }); },
+  cash() { tone(1568, .12, { type: "triangle", vol: .1 }); tone(2093, .3, { type: "triangle", vol: .09, delay: .09 }); noiseHit(.08, { f: 5000, q: 2, vol: .15 }); },
   blip() { tone(R(520, 640), .03, { type: "square", vol: .025 }); },
 };
